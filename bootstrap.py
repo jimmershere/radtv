@@ -682,6 +682,13 @@ def step_install_official(state: Dict[str, Any]) -> bool:
             versions[aid] = ver
     info(f"mirror lists {len(versions)} addons")
 
+    # Addons that ship as Debian apt packages -- they exist in the mirror
+    # but we install them via apt in step 2, so dep resolution should
+    # skip them to avoid spurious 404s for the per-platform binaries.
+    DEBIAN_PROVIDED = {
+        "inputstream.adaptive", "inputstream.rtmp", "inputstream.ffmpegdirect",
+        "pvr.iptvsimple", "pvr.hts", "vfs.libarchive",
+    }
     failed = []
     for aid in OFFICIAL_ADDONS:
         if aid not in versions:
@@ -723,6 +730,10 @@ def step_install_official(state: Dict[str, Any]) -> bool:
         for imp in r.findall(".//requires/import"):
             dep = imp.get("addon")
             if not dep or dep.startswith("xbmc."):
+                continue
+            if dep in DEBIAN_PROVIDED:
+                # Installed via apt in Step 2; metadata lives under
+                # /usr/share/kodi/addons, not ~/.kodi/addons.
                 continue
             if os.path.isdir(os.path.join(KODI_ADDONS, dep)):
                 continue
@@ -802,12 +813,21 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
     header("Step 9 / 11  ·  Real-Debrid (optional)")
     if not confirm("Authorize Real-Debrid now? (skip if no account)", default=True):
         info("skipped Real-Debrid")
+        mark_done(state, "realdebrid", realdebrid="skipped")
         return True
+    # RD device-code endpoint is GET (not POST) with client_id +
+    # new_credentials in the query string.
     try:
-        device = http_post(REALDEBRID_DEVICE_URL + f"?client_id={REALDEBRID_CLIENT_ID}&new_credentials=yes", {})
+        device_url = (
+            f"{REALDEBRID_DEVICE_URL}"
+            f"?client_id={REALDEBRID_CLIENT_ID}&new_credentials=yes"
+        )
+        device = http_get_json(device_url)
     except Exception as exc:
-        err(f"could not start RD device flow: {exc}")
-        return False
+        warn(f"could not start RD device flow: {exc}")
+        warn("you can re-run anytime with `./badtv repair realdebrid`")
+        mark_done(state, "realdebrid", realdebrid="error")
+        return True   # non-blocking
     code = device.get("user_code", "?")
     url = device.get("verification_url", "https://real-debrid.com/device")
     interval = int(device.get("interval", 5))
@@ -815,18 +835,20 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
     cprint(f"\n  Go to: {url}", color=Color.AMBER, bold=True)
     cprint(f"  Enter code: {code}\n", color=Color.AMBER, bold=True)
     info("Waiting for authorization (ctrl-C to skip)...")
-    while True:
-        time.sleep(interval)
+    deadline = time.time() + int(device.get("expires_in", 600))
+    while time.time() < deadline:
+        try:
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            print(); warn("skipped during wait")
+            mark_done(state, "realdebrid", realdebrid="skipped")
+            return True
         try:
             creds_url = f"{REALDEBRID_CREDS_URL}?client_id={REALDEBRID_CLIENT_ID}&code={dev_code}"
             creds = http_get_json(creds_url)
         except urllib.error.HTTPError:
             sys.stdout.write("."); sys.stdout.flush()
             continue
-        except KeyboardInterrupt:
-            print()
-            warn("skipped during wait")
-            return True
         client_id_real = creds.get("client_id")
         client_secret = creds.get("client_secret")
         if client_id_real and client_secret:
@@ -840,11 +862,15 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
                     "grant_type": "http://oauth.net/grant_type/device/1.0",
                 })
                 _write_rd_settings(token, client_id_real, client_secret)
-                mark_done(state, "realdebrid")
+                mark_done(state, "realdebrid", realdebrid="authorized")
                 return True
             except Exception as exc:
-                err(f"token exchange failed: {exc}")
-                return False
+                warn(f"token exchange failed: {exc}")
+                mark_done(state, "realdebrid", realdebrid="error")
+                return True   # non-blocking
+    warn("Real-Debrid authorization timed out")
+    mark_done(state, "realdebrid", realdebrid="timeout")
+    return True   # non-blocking
 
 
 def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str) -> None:
@@ -874,12 +900,15 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
 def step_trakt(state: Dict[str, Any]) -> bool:
     header("Step 10 / 11  ·  Trakt (optional)")
     if not confirm("Authorize Trakt now? (skip if no account)", default=True):
+        mark_done(state, "trakt", trakt="skipped")
         return True
     try:
         device = http_post(TRAKT_DEVICE_URL, {"client_id": TRAKT_CLIENT_ID})
     except Exception as exc:
-        err(f"could not start Trakt device flow: {exc}")
-        return False
+        warn(f"could not start Trakt device flow: {exc}")
+        warn("re-run later with `./badtv repair trakt`")
+        mark_done(state, "trakt", trakt="error")
+        return True   # non-blocking
     code = device.get("user_code", "?")
     url = device.get("verification_url", "https://trakt.tv/activate")
     interval = int(device.get("interval", 5))
@@ -900,16 +929,20 @@ def step_trakt(state: Dict[str, Any]) -> bool:
             if exc.code == 400:
                 sys.stdout.write("."); sys.stdout.flush()
                 continue
-            err(f"Trakt token error: {exc}")
-            return False
+            warn(f"Trakt token error: {exc}")
+            mark_done(state, "trakt", trakt="error")
+            return True   # non-blocking
         except KeyboardInterrupt:
-            print(); warn("skipped during wait"); return True
+            print(); warn("skipped during wait")
+            mark_done(state, "trakt", trakt="skipped")
+            return True
         if token.get("access_token"):
             print()
             ok("Trakt authorized")
             mark_done(state, "trakt", trakt_token=token.get("access_token"))
             return True
     warn("Trakt authorization timed out")
+    mark_done(state, "trakt", trakt="timeout")
     return True
 
 
