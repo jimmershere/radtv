@@ -18,38 +18,43 @@
 sources:
 
   # --- US free / legal -------------------------------------------------------
-
-  - id: pluto-us
-    name: Pluto TV (US)
+  #
+  # Matt Huisman (i.mjh.nz) consolidated his per-service playlists -- Pluto TV,
+  # Plex Live, Samsung TV+, Stirr, Roku, PBS, Tubi-EPG, etc. -- into a single
+  # `/all/kodi-tv.m3u8` and matching `/all/epg.xml`. One source line now
+  # delivers everything that used to be four broken URLs.
+  - id: mjh-kodi-all
+    name: MJH Kodi combined (Pluto / Plex / Samsung TV+ / Stirr / Roku / PBS)
     category: us_free
     enabled: true
-    m3u: https://i.mjh.nz/PlutoTV/us.m3u8
+    m3u: https://i.mjh.nz/all/kodi-tv.m3u8
+    epg: https://i.mjh.nz/all/epg.xml
+    group: "MJH"
+    notes: |
+      MJH ships several variants: kodi-tv.m3u8 (TV-only, our default),
+      kodi-radio.m3u8 (radio), kodi.m3u8 (combined), raw-tv.m3u8 (provider-
+      agnostic). Switch by editing this entry.
+
+  # Per-service EPGs are still available per country if you want a smaller,
+  # service-targeted guide. Off by default -- the combined MJH EPG above
+  # already covers them.
+  - id: mjh-plutotv-us
+    name: MJH PlutoTV US EPG (per-service)
+    category: epg
+    enabled: false
     epg: https://i.mjh.nz/PlutoTV/us.xml
-    group: "US / Pluto"
 
-  - id: plex-us
-    name: Plex Live TV (US)
-    category: us_free
-    enabled: true
-    m3u: https://i.mjh.nz/Plex/us.m3u8
+  - id: mjh-plex-us
+    name: MJH Plex US EPG (per-service)
+    category: epg
+    enabled: false
     epg: https://i.mjh.nz/Plex/us.xml
-    group: "US / Plex"
 
-  - id: samsung-us
-    name: Samsung TV Plus (US)
-    category: us_free
-    enabled: true
-    m3u: https://i.mjh.nz/SamsungTVPlus/us.m3u8
+  - id: mjh-samsung-us
+    name: MJH Samsung TV+ US EPG (per-service)
+    category: epg
+    enabled: false
     epg: https://i.mjh.nz/SamsungTVPlus/us.xml
-    group: "US / Samsung TV+"
-
-  - id: stirr-all
-    name: Stirr (all)
-    category: us_free
-    enabled: true
-    m3u: https://i.mjh.nz/Stirr/all.m3u8
-    epg: https://i.mjh.nz/Stirr/all.xml
-    group: "US / Stirr"
 
   # --- News ------------------------------------------------------------------
 
@@ -135,10 +140,10 @@ sources:
   # Useful when you maintain your own M3U but want a community EPG to back it.
 
   - id: epg-pw
-    name: epg.pw US guide
+    name: epg.pw global guide
     category: epg
     enabled: true
-    epg: https://epg.pw/xmltv.xml
+    epg: https://epg.pw/xmltv/epg.xml
     notes: |
       epg.pw covers many US, UK, Canadian, and Australian channels. Used as a
       fallback EPG layer after the per-source EPG matches above.

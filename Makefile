@@ -72,13 +72,18 @@ $(REPO_DIR)/addons.xml.md5: $(REPO_DIR)/addons.xml
 install:  ## Apply B@Dtv to the local Kodi userdata
 	bash install.sh
 
-check:  ## Lint XML + run wizard smoke tests
+check:  ## Lint XML + run wizard smoke tests + structurally lint built zips
 	python3 -c "import xml.etree.ElementTree as ET; \
 	  [ET.parse(p) for p in ['$(WIZARD_DIR)/addon.xml','$(REPO_DIR)/addon.xml','$(REPO_DIR)/addons.xml']]; \
 	  print('xml ok')"
 	python3 -c "import json; json.load(open('addons/scraper-catalog.json')); print('catalog json ok')"
 	cd $(WIZARD_DIR) && PYTHONPATH=resources python3 -c "from lib import badtv_wizard, actions, sources_xml, pvr_iptv, catalog, network; print('wizard imports ok')"
-	python3 iptv/build-playlist.py --dry-run --only-id pluto-us || true
+	@if [ -f $(WIZARD_ZIP) ] && [ -f $(REPO_ZIP) ]; then \
+	  python3 tools/lint-zips.py; \
+	else \
+	  echo "(skip zip lint — run 'make repo' first)"; \
+	fi
+	python3 iptv/build-playlist.py --dry-run --only-id mjh-kodi-all || true
 	python3 tools/refresh-scrapers.py --dry-run --only-id umbrella || true
 
 clean:  ## Delete built artifacts
