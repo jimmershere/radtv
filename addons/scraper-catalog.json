@@ -1,101 +1,19 @@
 {
   "schema_version": 2,
-  "updated": "2026-05-24T20:30:00Z",
+  "updated": "2026-05-24T21:00:07Z",
   "generator": "manual + tools/refresh-scrapers.py",
   "comment": "Canonical B@Dtv catalog of third-party Kodi addon repos. The bootstrap installs everything tagged `auto: true` directly. The wizard fetches the latest at runtime and falls back to this bundled copy when offline. Schema v2 adds `repo_zip_url` (the single-file repo zip Kodi-style repos serve at their root) and `addons_xml` (the URL listed INSIDE the repo's addon.xml, after picking the right <dir> block for the Kodi major). Live URLs verified 2026-05-24.",
   "scrapers": [
-    {
-      "id": "umbrella",
-      "name": "Umbrella",
-      "addon_id": "plugin.video.umbrella",
-      "category": "scraper",
-      "description": "All-around movie/TV scraper. Real-Debrid + Trakt + Premiumize. Best daily-driver in the stack as of 2026.",
-      "tags": ["movies", "tv", "real-debrid", "trakt"],
-      "auto": true,
-      "repos": [
-        {
-          "label": "umbrellaplug",
-          "url": "https://umbrellaplug.github.io/",
-          "repo_zip_url": "https://umbrellaplug.github.io/repository.umbrella-2.2.6.zip",
-          "addons_xml": "https://raw.githubusercontent.com/umbrellaplug/umbrellaplug.github.io/master/nexus/zips/addons.xml",
-          "addons_xml_omega": "https://raw.githubusercontent.com/umbrellaplug/umbrellaplug.github.io/master/omega/zips/addons.xml",
-          "status": "ok",
-          "version": "6.7.75",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
-        }
-      ]
-    },
-    {
-      "id": "thecrew",
-      "name": "The Crew",
-      "addon_id": "plugin.video.thecrew",
-      "category": "scraper",
-      "description": "All-in-one movies + TV + sports + live TV. Strong Real-Debrid integration. Actively maintained.",
-      "tags": ["movies", "tv", "sports", "real-debrid"],
-      "auto": true,
-      "repos": [
-        {
-          "label": "team-crew",
-          "url": "https://team-crew.github.io/",
-          "repo_zip_url": "https://team-crew.github.io/repository.thecrew-0.3.8.zip",
-          "addons_xml": "https://raw.githubusercontent.com/thecrewwh/zips/master/matrix/_zip/addons.xml",
-          "status": "ok",
-          "version": "2.0.6",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
-        }
-      ]
-    },
-    {
-      "id": "seren",
-      "name": "Seren",
-      "addon_id": "plugin.video.seren",
-      "category": "scraper",
-      "description": "Premium Real-Debrid-first scraper. Polished cached-source workflows and Trakt integration. Requires RD and Trakt for full experience.",
-      "tags": ["movies", "tv", "real-debrid", "trakt"],
-      "auto": true,
-      "repos": [
-        {
-          "label": "nixgates",
-          "url": "https://nixgates.github.io/packages/",
-          "repo_zip_url": "https://nixgates.github.io/packages/repository.nixgates-2.2.0.zip",
-          "addons_xml": "https://raw.githubusercontent.com/nixgates/nixgates/master/repo/zips/addons.xml",
-          "status": "ok",
-          "version": "2.1.9",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
-        }
-      ]
-    },
-    {
-      "id": "pov",
-      "name": "POV",
-      "addon_id": "plugin.video.pov",
-      "category": "scraper",
-      "description": "Lightweight FEN fork that 'just works' with Real-Debrid. Easier alternative to Umbrella for dependable RD links.",
-      "tags": ["movies", "tv", "real-debrid"],
-      "auto": true,
-      "repos": [
-        {
-          "label": "kodifitzwell",
-          "url": "https://kodifitzwell.github.io/repo/",
-          "repo_zip_url": "https://kodifitzwell.github.io/repo/repository.kodifitzwell-0.0.1.zip",
-          "addons_xml": "https://kodiyashimaru.github.io/repo/packages/addons.xml",
-          "status": "ok",
-          "version": "6.05.13",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
-        }
-      ]
-    },
     {
       "id": "cocoscrapers",
       "name": "CocoScrapers",
       "addon_id": "script.module.cocoscrapers",
       "category": "scraper-module",
       "description": "External scraper sources module. Required by Umbrella, FEN Light, POV, and similar to actually find streams. Not user-facing — runs in the background.",
-      "tags": ["module", "real-debrid"],
+      "tags": [
+        "module",
+        "real-debrid"
+      ],
       "auto": true,
       "repos": [
         {
@@ -105,8 +23,60 @@
           "addons_xml": "https://raw.githubusercontent.com/not-coco-joe/repository.cocoscrapers/master/zips/addons.xml",
           "status": "ok",
           "version": "1.0.39",
+          "last_seen_ok": "2026-05-24T21:00:06Z",
+          "last_checked": "2026-05-24T21:00:06Z"
+        }
+      ]
+    },
+    {
+      "id": "fenlight",
+      "name": "FEN Light AM",
+      "addon_id": "plugin.video.fenlight",
+      "category": "scraper",
+      "description": "Unofficial FEN fork. The original FEN Light maintainer halted updates but the addon still works. Currently distributed inside the Red Wizard build (Android-installable APK + Kodi repo) rather than a standalone Pages mirror.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid",
+        "legacy"
+      ],
+      "auto": false,
+      "notes": "Original 'fenlightanonymouse.github.io' Pages site is dead. Install path is now manual: grab repository.redwizard-1.2.2.zip from https://repo.redwizard.xyz/ and install Fen Light AM from inside it.",
+      "repos": [
+        {
+          "label": "redwizard",
+          "url": "https://repo.redwizard.xyz/",
+          "repo_zip_url": "https://repo.redwizard.xyz/repository.redwizard-1.2.2.zip",
+          "addons_xml": null,
+          "status": "down",
+          "version": "",
           "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
+          "last_checked": "2026-05-24T21:00:07Z"
+        }
+      ]
+    },
+    {
+      "id": "pov",
+      "name": "POV",
+      "addon_id": "plugin.video.pov",
+      "category": "scraper",
+      "description": "Lightweight FEN fork that 'just works' with Real-Debrid. Easier alternative to Umbrella for dependable RD links.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid"
+      ],
+      "auto": true,
+      "repos": [
+        {
+          "label": "kodifitzwell",
+          "url": "https://kodifitzwell.github.io/repo/",
+          "repo_zip_url": "https://kodifitzwell.github.io/repo/repository.kodifitzwell-0.0.1.zip",
+          "addons_xml": "https://kodiyashimaru.github.io/repo/packages/addons.xml",
+          "status": "ok",
+          "version": "6.05.13",
+          "last_seen_ok": "2026-05-24T21:00:06Z",
+          "last_checked": "2026-05-24T21:00:06Z"
         }
       ]
     },
@@ -116,7 +86,10 @@
       "addon_id": "script.module.resolveurl",
       "category": "scraper-module",
       "description": "URL-resolution module that converts host links into playable URLs. Handles Real-Debrid / AllDebrid / Premiumize auth. Required by every grey-area scraper.",
-      "tags": ["module", "real-debrid"],
+      "tags": [
+        "module",
+        "real-debrid"
+      ],
       "auto": true,
       "repos": [
         {
@@ -127,30 +100,87 @@
           "datadir": "https://raw.githubusercontent.com/Gujal00/smrzips/master/zips/",
           "status": "ok",
           "version": "5.1.199",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
+          "last_seen_ok": "2026-05-24T21:00:07Z",
+          "last_checked": "2026-05-24T21:00:07Z"
         }
       ]
     },
     {
-      "id": "fenlight",
-      "name": "FEN Light AM",
-      "addon_id": "plugin.video.fenlight",
+      "id": "seren",
+      "name": "Seren",
+      "addon_id": "plugin.video.seren",
       "category": "scraper",
-      "description": "Unofficial FEN fork. The original FEN Light maintainer halted updates but the addon still works. Currently distributed inside the Red Wizard build (Android-installable APK + Kodi repo) rather than a standalone Pages mirror.",
-      "tags": ["movies", "tv", "real-debrid", "legacy"],
-      "auto": false,
-      "notes": "Original 'fenlightanonymouse.github.io' Pages site is dead. Install path is now manual: grab repository.redwizard-1.2.2.zip from https://repo.redwizard.xyz/ and install Fen Light AM from inside it.",
+      "description": "Premium Real-Debrid-first scraper. Polished cached-source workflows and Trakt integration. Requires RD and Trakt for full experience.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid",
+        "trakt"
+      ],
+      "auto": true,
       "repos": [
         {
-          "label": "redwizard",
-          "url": "https://repo.redwizard.xyz/",
-          "repo_zip_url": "https://repo.redwizard.xyz/repository.redwizard-1.2.2.zip",
-          "addons_xml": null,
-          "status": "manual",
-          "version": "",
-          "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-05-24T20:30:00Z"
+          "label": "nixgates",
+          "url": "https://nixgates.github.io/packages/",
+          "repo_zip_url": "https://nixgates.github.io/packages/repository.nixgates-2.2.0.zip",
+          "addons_xml": "https://raw.githubusercontent.com/nixgates/nixgates/master/repo/zips/addons.xml",
+          "status": "ok",
+          "version": "2.1.9",
+          "last_seen_ok": "2026-05-24T21:00:06Z",
+          "last_checked": "2026-05-24T21:00:06Z"
+        }
+      ]
+    },
+    {
+      "id": "thecrew",
+      "name": "The Crew",
+      "addon_id": "plugin.video.thecrew",
+      "category": "scraper",
+      "description": "All-in-one movies + TV + sports + live TV. Strong Real-Debrid integration. Actively maintained.",
+      "tags": [
+        "movies",
+        "tv",
+        "sports",
+        "real-debrid"
+      ],
+      "auto": true,
+      "repos": [
+        {
+          "label": "team-crew",
+          "url": "https://team-crew.github.io/",
+          "repo_zip_url": "https://team-crew.github.io/repository.thecrew-0.3.8.zip",
+          "addons_xml": "https://raw.githubusercontent.com/thecrewwh/zips/master/matrix/_zip/addons.xml",
+          "status": "ok",
+          "version": "2.0.6",
+          "last_seen_ok": "2026-05-24T21:00:06Z",
+          "last_checked": "2026-05-24T21:00:06Z"
+        }
+      ]
+    },
+    {
+      "id": "umbrella",
+      "name": "Umbrella",
+      "addon_id": "plugin.video.umbrella",
+      "category": "scraper",
+      "description": "All-around movie/TV scraper. Real-Debrid + Trakt + Premiumize. Best daily-driver in the stack as of 2026.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid",
+        "trakt"
+      ],
+      "auto": true,
+      "repos": [
+        {
+          "label": "umbrellaplug",
+          "url": "https://umbrellaplug.github.io/",
+          "repo_zip_url": "https://umbrellaplug.github.io/repository.umbrella-2.2.6.zip",
+          "addons_xml": "https://raw.githubusercontent.com/umbrellaplug/umbrellaplug.github.io/master/nexus/zips/addons.xml",
+          "addons_xml_omega": "https://raw.githubusercontent.com/umbrellaplug/umbrellaplug.github.io/master/omega/zips/addons.xml",
+          "status": "ok",
+          "version": "6.7.75",
+          "last_seen_ok": "2026-05-24T21:00:06Z",
+          "last_checked": "2026-05-24T21:00:06Z"
         }
       ]
     }
