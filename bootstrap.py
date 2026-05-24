@@ -132,18 +132,22 @@ def section(text: str) -> None:
 
 def info(text: str) -> None:
     cprint(f"  · {text}", color=Color.GREY)
+    log(f"info: {text}")
 
 
 def ok(text: str) -> None:
     cprint(f"  ✓ {text}", color=Color.GREEN)
+    log(f"ok:   {text}")
 
 
 def warn(text: str) -> None:
     cprint(f"  ! {text}", color=Color.AMBER, bold=True)
+    log(f"warn: {text}")
 
 
 def err(text: str) -> None:
     cprint(f"  ✗ {text}", color=Color.BRICK, bold=True)
+    log(f"err:  {text}")
 
 
 def banner() -> None:
@@ -304,8 +308,19 @@ def http_get(url: str, *, timeout: int = HTTP_TIMEOUT) -> bytes:
     ctx = ssl.create_default_context()
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
         data = resp.read()
-        if resp.headers.get("Content-Encoding") == "gzip":
+        # Decompress when EITHER the server sets Content-Encoding gzip OR
+        # the URL ends in .gz (kodi.tv mirror does the latter -- ships
+        # gzipped files as application/octet-stream with no encoding hint).
+        # Also catch the case where the first two bytes are gzip magic
+        # (1f 8b) regardless of headers / extension.
+        looks_gzipped = (
+            resp.headers.get("Content-Encoding") == "gzip"
+            or url.lower().endswith(".gz")
+            or data[:2] == b"\x1f\x8b"
+        )
+        if looks_gzipped:
             data = gzip.decompress(data)
+            log(f"  decompressed gzip -> {len(data)} bytes")
         return data
 
 
