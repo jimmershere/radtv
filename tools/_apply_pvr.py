@@ -30,7 +30,9 @@ def main(argv: list[str]) -> int:
     }
     existing = {s.get("id"): s for s in root.findall("setting")}
     for k, v in desired.items():
-        elem = existing.get(k) or ET.SubElement(root, "setting", id=k)
+        elem = existing.get(k)
+        if elem is None:
+            elem = ET.SubElement(root, "setting", id=k)
         elem.text = v
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tree.write(path, encoding="UTF-8", xml_declaration=True)

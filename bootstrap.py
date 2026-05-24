@@ -779,7 +779,10 @@ def step_pvr(state: Dict[str, Any]) -> bool:
     }
     existing = {s.get("id"): s for s in root.findall("setting")}
     for k, v in desired.items():
-        elem = existing.get(k) or ET.SubElement(root, "setting", id=k)
+        # Element-with-no-children is falsy in Python -- use `is None`.
+        elem = existing.get(k)
+        if elem is None:
+            elem = ET.SubElement(root, "setting", id=k)
         elem.text = v
     tree.write(path, encoding="UTF-8", xml_declaration=True)
     ok(f"wrote {path}")
@@ -803,9 +806,70 @@ def step_skin(state: Dict[str, Any]) -> bool:
     os.makedirs(dst_dir, exist_ok=True)
     shutil.copy2(src, os.path.join(dst_dir, "badtv.xml"))
     ok(f"copied B@Dtv color override into {SKIN_ID}/colors/")
-    info("After Kodi launches, set the skin (Settings > Interface > Skin),")
-    info(f"then choose B@Dtv (Settings > Skin > Colours > {SKIN_THEME_NAME}).")
+
+    # Patch guisettings.xml so Kodi activates the skin + color theme on
+    # next launch. Kodi overwrites this file when it exits cleanly, so the
+    # change only sticks if Kodi isn't currently running. Detect + kill if
+    # so, with the user's permission.
+    if _is_kodi_running():
+        warn("Kodi is currently running. guisettings.xml only takes effect "
+             "after a clean restart.")
+        if confirm("Kill the running Kodi so theme can apply?", default=True):
+            _kill_kodi()
+            ok("killed Kodi; will relaunch in the final step")
+
+    if _patch_guisettings(KODI_USERDATA):
+        ok(f"guisettings.xml: lookandfeel.skin = {SKIN_ID}")
+        ok(f"guisettings.xml: lookandfeel.skincolors = {SKIN_THEME_NAME}")
+    else:
+        warn("could not patch guisettings.xml; apply manually in Kodi:")
+        warn(f"  Settings > Interface > Skin > {SKIN_ID}")
+        warn(f"  Settings > Skin > Colours > {SKIN_THEME_NAME}")
     mark_done(state, "skin")
+    return True
+
+
+def _is_kodi_running() -> bool:
+    return run_ok(["pgrep", "-x", "kodi.bin"])
+
+
+def _kill_kodi() -> None:
+    subprocess.run(["pkill", "-TERM", "kodi.bin"], check=False)
+    subprocess.run(["pkill", "-TERM", "-f", "^/bin/sh.*kodi$"], check=False)
+    time.sleep(2)
+    subprocess.run(["pkill", "-KILL", "kodi.bin"], check=False)
+    subprocess.run(["pkill", "-KILL", "-f", "^/bin/sh.*kodi$"], check=False)
+    time.sleep(1)
+
+
+def _patch_guisettings(userdata: str) -> bool:
+    path = os.path.join(userdata, "guisettings.xml")
+    if not os.path.isfile(path):
+        # Kodi hasn't been run yet; write a minimal skeleton so the launch
+        # step picks up the right skin on first boot.
+        root = ET.Element("settings", version="2")
+        ET.SubElement(root, "setting", id="lookandfeel.skin").text = SKIN_ID
+        ET.SubElement(root, "setting", id="lookandfeel.skincolors").text = SKIN_THEME_NAME
+        ET.ElementTree(root).write(path, encoding="UTF-8", xml_declaration=True)
+        return True
+    try:
+        tree = ET.parse(path); root = tree.getroot()
+    except ET.ParseError:
+        return False
+    desired = {
+        "lookandfeel.skin": SKIN_ID,
+        "lookandfeel.skincolors": SKIN_THEME_NAME,
+    }
+    existing = {s.get("id"): s for s in root.findall("setting")}
+    for k, v in desired.items():
+        # NB: a child-less Element is falsy in Python, so explicit `is None`.
+        elem = existing.get(k)
+        if elem is None:
+            elem = ET.SubElement(root, "setting", id=k)
+        elem.text = v
+        if "default" in elem.attrib:
+            del elem.attrib["default"]
+    tree.write(path, encoding="UTF-8", xml_declaration=True)
     return True
 
 
@@ -892,16 +956,28 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
     }
     existing = {s.get("id"): s for s in root.findall("setting")}
     for k, v in desired.items():
-        e = existing.get(k) or ET.SubElement(root, "setting", id=k)
+        e = existing.get(k)
+        if e is None:
+            e = ET.SubElement(root, "setting", id=k)
         e.text = v
     tree.write(path, encoding="UTF-8", xml_declaration=True)
 
 
 def step_trakt(state: Dict[str, Any]) -> bool:
-    header("Step 10 / 11  ·  Trakt (optional)")
-    if not confirm("Authorize Trakt now? (skip if no account)", default=True):
-        mark_done(state, "trakt", trakt="skipped")
-        return True
+    header("Step 10 / 11  ·  Trakt")
+    info("Trakt sync requires a registered Trakt OAuth app, which B@Dtv")
+    info("doesn't ship one of (would require us to host client credentials).")
+    info("")
+    info("Easier path: when you install a scraper that supports Trakt")
+    info("(Umbrella, Seren, FEN Light, ...), authorize Trakt inside THAT")
+    info("addon's settings -- each addon ships its own registered client id")
+    info("and walks you through the device code flow.")
+    info("")
+    info("If you don't use Trakt at all you can ignore this step.")
+    mark_done(state, "trakt", trakt="defer_to_addon")
+    return True
+    # Below kept for reference; not reached. The placeholder client_id
+    # below returns 403 from Trakt because it isn't a registered app.
     try:
         device = http_post(TRAKT_DEVICE_URL, {"client_id": TRAKT_CLIENT_ID})
     except Exception as exc:
@@ -950,6 +1026,7 @@ def step_stream_test(state: Dict[str, Any]) -> bool:
     header("Step 11 / 11  ·  Stream test (mpv)")
     if not shutil.which("mpv"):
         warn("mpv not installed; skipping stream test")
+        mark_done(state, "stream_test", stream_test="skipped_no_mpv")
         return True
     try:
         m3u = http_get(
@@ -957,38 +1034,67 @@ def step_stream_test(state: Dict[str, Any]) -> bool:
             timeout=30,
         ).decode("utf-8", errors="replace")
     except Exception as exc:
-        err(f"could not fetch playlist: {exc}")
-        return False
+        warn(f"could not fetch playlist: {exc}")
+        mark_done(state, "stream_test", stream_test="no_playlist")
+        return True
+
+    # Pick channels we expect to actually resolve from a US connection:
+    # tvg-id ending in `.us@` (iptv-org's US channels), name containing
+    # well-known US public-broadcaster patterns, or known-good MJH groups.
+    # Skip MJH/Nz, MJH/Au, [Geo-blocked] markers, and any URL we already
+    # know is regional-only.
     lines = m3u.splitlines()
-    candidates = []
+    us_candidates: List[Tuple[str, str]] = []
+    other_candidates: List[Tuple[str, str]] = []
     for i, line in enumerate(lines):
-        if line.startswith("#EXTINF") and i + 1 < len(lines):
-            url = lines[i + 1].split("|", 1)[0].strip()
-            if url.startswith("http"):
-                candidates.append(url)
-        if len(candidates) >= 5:
+        if not line.startswith("#EXTINF") or i + 1 >= len(lines):
+            continue
+        url = lines[i + 1].split("|", 1)[0].strip()
+        if not url.startswith("http"):
+            continue
+        # Skip explicitly geo-blocked entries
+        if "[Geo-blocked]" in line or "[Not 24/7]" in line:
+            continue
+        # Skip MJH NZ/AU which won't resolve from the US
+        if "group-title=\"MJH / Nz\"" in line or "group-title=\"MJH / Au\"" in line:
+            continue
+        if 'group-title="Au"' in line or 'group-title="Nz"' in line:
+            continue
+        name_match = re.search(r',(.+)$', line)
+        name = name_match.group(1) if name_match else "?"
+        if re.search(r'tvg-id="[^"]*\.us@', line):
+            us_candidates.append((name, url))
+        else:
+            other_candidates.append((name, url))
+        if len(us_candidates) >= 8:
             break
-    for idx, url in enumerate(candidates, 1):
-        info(f"trying channel {idx}/{len(candidates)}: {url[:80]}...")
+
+    candidates = us_candidates[:8] or other_candidates[:5]
+    info(f"trying {len(candidates)} US-region candidates ({len(us_candidates)} US-tagged in pool)")
+
+    for idx, (name, url) in enumerate(candidates, 1):
+        short = name[:50] if len(name) > 50 else name
+        info(f"  {idx}/{len(candidates)}: {short}")
         try:
             cp = subprocess.run(
-                ["mpv", "--no-video", "--ao=null", "--length=4",
+                ["mpv", "--no-video", "--ao=null", "--length=3",
                  "--quiet", "--no-terminal", url],
-                timeout=15, capture_output=True, text=True,
+                timeout=10, capture_output=True, text=True,
             )
         except subprocess.TimeoutExpired:
-            warn(f"timeout on channel {idx}")
+            log(f"  timeout on {short}")
             continue
         if cp.returncode == 0:
-            ok(f"channel {idx} played for 4s -- streams work from this network")
-            mark_done(state, "stream_test", working_channel=url)
+            ok(f"PLAYED: {short}")
+            ok("streams work from this network -- IPTV is going to work in Kodi")
+            mark_done(state, "stream_test", working_channel=url, working_channel_name=name)
             return True
-        log(f"mpv stderr: {cp.stderr[:200]}")
-    warn("None of the first 5 channels played in 15s each.")
-    warn("Possible causes: ISP DPI on IPTV, regional block, "
-         "stream URL rotted upstream.")
-    warn("If you set up a VPN earlier, also try `./badtv repair vpn` "
-         "and pick a different exit.")
+        log(f"  mpv exit {cp.returncode}: {cp.stderr[:150]}")
+
+    warn(f"None of {len(candidates)} US-region candidates played.")
+    warn("Most likely cause: Spectrum (your ISP) is DPI-blocking IPTV.")
+    warn("Next step: ./badtv repair vpn   -- set up ExpressVPN to bypass.")
+    mark_done(state, "stream_test", stream_test="all_failed")
     return True
 
 
