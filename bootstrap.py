@@ -486,59 +486,100 @@ def step_vpn(state: Dict[str, Any]) -> bool:
     return ok_
 
 
-def vpn_expressvpn(state: Dict[str, Any]) -> bool:
+def _expressvpn_status() -> Tuple[bool, bool, str]:
+    """Return (installed, activated, status_text). Probes `expressvpn status`."""
     if not shutil.which("expressvpn"):
-        info("ExpressVPN CLI not installed; fetching official .deb")
-        deb_url = ask(
-            "Paste the ExpressVPN Linux .deb URL from expressvpn.com/setup\n"
-            "    (the page after you log in shows download links; copy the "
-            "Ubuntu 64-bit one)",
-        )
-        if not deb_url.startswith("http"):
-            err("invalid URL")
-            return False
-        tmp = "/tmp/expressvpn.deb"
-        info(f"downloading -> {tmp}")
-        try:
-            data = http_get(deb_url, timeout=60)
-        except Exception as exc:
-            err(f"download failed: {exc}")
-            return False
-        with open(tmp, "wb") as fh:
-            fh.write(data)
-        ok(f"got {len(data) // 1024} KB")
+        return False, False, ""
+    try:
+        cp = subprocess.run(["expressvpn", "status"],
+                            capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return True, False, ""
+    text = (cp.stdout + cp.stderr).lower()
+    activated = ("not activated" not in text and
+                 "please activate" not in text and
+                 "expressvpn activate" not in text)
+    return True, activated, cp.stdout.strip()
+
+
+def vpn_expressvpn(state: Dict[str, Any]) -> bool:
+    installed, activated, status_text = _expressvpn_status()
+
+    # --- install (only if missing) -----------------------------------------
+    if not installed:
+        info("ExpressVPN CLI not installed.")
+        info("ExpressVPN's download page is JS-rendered behind a login, so")
+        info("there's no public URL we can fetch. Download the .deb yourself:")
+        info("")
+        info("  1. Log in at https://www.expressvpn.com/setup")
+        info("  2. Linux tab > Ubuntu 64-bit > Download")
+        info("  3. Note where it landed (probably ~/Downloads)")
+        info("")
+        while True:
+            path = ask("Local path to the downloaded .deb (or 'skip' to skip VPN)")
+            if path.lower() == "skip":
+                warn("ExpressVPN install skipped")
+                return False
+            path = os.path.expanduser(path)
+            if os.path.isfile(path) and path.endswith(".deb"):
+                break
+            err(f"not a .deb file: {path}")
 
         if not ensure_sudo():
             return False
-        try:
-            run(["sudo", "dpkg", "-i", tmp], check=False)
-            run(["sudo", "apt-get", "install", "-f", "-y"])
-        except subprocess.CalledProcessError as exc:
-            err(f"install failed: {exc}")
+        info(f"installing {os.path.basename(path)}...")
+        # dpkg -i may complain about missing deps; the apt-get install -f
+        # right after pulls them in. Both can produce non-zero exits during
+        # normal operation; we only fail if `expressvpn` isn't on PATH after.
+        subprocess.run(["sudo", "dpkg", "-i", path],
+                       check=False, capture_output=True)
+        subprocess.run(["sudo", "apt-get", "install", "-f", "-y"],
+                       check=False, capture_output=True)
+        if not shutil.which("expressvpn"):
+            err("install completed but `expressvpn` not on PATH")
+            err("Try: sudo apt-get install -f -y    then re-run `./badtv repair vpn`")
             return False
         ok("ExpressVPN CLI installed")
+        installed, activated, status_text = _expressvpn_status()
+    else:
+        ok("ExpressVPN CLI already installed")
 
-    info("Need your ExpressVPN ACTIVATION CODE.")
-    info("Find it at: https://www.expressvpn.com/setup#linux  (under your account)")
-    code = ask("activation code")
-    if not code:
-        err("no code provided")
-        return False
+    # --- activate (only if needed) -----------------------------------------
+    if not activated:
+        info("ExpressVPN is not activated.")
+        info("Get your activation code at: https://www.expressvpn.com/setup")
+        info("")
+        info("We'll hand the terminal to `expressvpn activate` -- type your")
+        info("code when it prompts, then answer 'n' to the two diagnostic")
+        info("questions. Returns control here when done.")
+        info("")
+        ask("press Enter when ready", default="")
+        try:
+            subprocess.run(["expressvpn", "activate"], check=True)
+        except subprocess.CalledProcessError as exc:
+            err(f"activation failed (exit {exc.returncode}); "
+                "you can try `expressvpn activate` by hand then re-run "
+                "`./badtv repair vpn`")
+            return False
+        ok("activated")
+    else:
+        ok("ExpressVPN already activated")
 
-    try:
-        run(["expressvpn", "activate"], input_text=code + "\n" + "n\n", check=True)
-    except subprocess.CalledProcessError as exc:
-        err(f"activation failed: {exc}")
-        return False
-    ok("activated")
-
-    info("Connecting to the 'smart' location...")
-    try:
-        run(["expressvpn", "connect", "smart"], check=True, timeout=60)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        err(f"connect failed: {exc}")
-        return False
-    ok("ExpressVPN connected")
+    # --- connect (only if not already connected) ---------------------------
+    _, _, status_text = _expressvpn_status()
+    if "connected to" in status_text.lower():
+        location = status_text.split("Connected to", 1)[-1].strip().splitlines()[0]
+        ok(f"already connected: {location}")
+    else:
+        info("Connecting to the 'smart' location...")
+        try:
+            run(["expressvpn", "connect", "smart"], check=True, timeout=60)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            err(f"connect failed: {exc}")
+            err("Try: `expressvpn connect smart` by hand, then "
+                "`./badtv repair vpn` to verify")
+            return False
+        ok("ExpressVPN connected")
     return True
 
 
