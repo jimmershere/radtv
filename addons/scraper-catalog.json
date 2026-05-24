@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated": "2026-05-24T11:37:49Z",
+  "updated": "2026-05-24T11:41:39Z",
   "generator": "tools/refresh-scrapers.py",
   "comment": "Canonical B@Dtv catalog of third-party scraper repos. Refreshed daily by .github/workflows/refresh-scrapers.yml; the wizard fetches the latest at runtime and falls back to this bundled copy when offline. Hand-edit ONLY to add a new scraper or a new mirror URL; let the script manage `status`, `version`, and `last_seen_ok` fields.",
   "scrapers": [
@@ -23,7 +23,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:49Z"
+          "last_checked": "2026-05-24T11:41:38Z"
         }
       ]
     },
@@ -46,7 +46,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:49Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -69,7 +69,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:48Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -92,7 +92,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:49Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -115,7 +115,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:48Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:48Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -162,7 +162,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:48Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -186,7 +186,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:48Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -208,7 +208,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": "2026-05-24T11:37:49Z"
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     }
