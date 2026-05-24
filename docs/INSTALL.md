@@ -19,6 +19,33 @@ the **manual path** (you click through Kodi by hand). Pick one.
 - Kodi → **Settings → System → Add-ons → Unknown sources: ON** (any
   third-party addon needs this).
 
+### Debian / Ubuntu / Mint extras
+
+The `kodi` apt package does **not** pull in the binary helper addons several
+parts of B@Dtv (and most modern Kodi streams) depend on. Install them once
+or the wizard's "Install official addons" step will fail with errors like
+*"The dependency on inputstream.adaptive version 19.0.0 could not be
+satisfied"*:
+
+```bash
+sudo apt-get install -y \
+  kodi-inputstream-adaptive \
+  kodi-pvr-iptvsimple \
+  kodi-inputstream-rtmp \
+  kodi-vfs-libarchive
+```
+
+| Package                       | Required for                                            |
+| ----------------------------- | ------------------------------------------------------- |
+| `kodi-inputstream-adaptive`   | YouTube, Tubi, Pluto TV, Twitch, most modern HLS/DASH.  |
+| `kodi-pvr-iptvsimple`         | Live TV (the PVR backend B@Dtv's wizard configures).    |
+| `kodi-inputstream-rtmp`       | RTMP-based community streams + a few legacy addons.     |
+| `kodi-vfs-libarchive`         | Browse zip/rar archives natively (some scrapers want it).|
+
+LibreELEC / CoreELEC ship all of these in their image; you only need this
+apt step on a general-purpose Linux distro with Kodi installed from the
+distro package.
+
 [Releases page]: https://github.com/jimmershere/badtv/releases
 
 ---

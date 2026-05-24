@@ -104,6 +104,30 @@ require_disclaimer() {
 
 require_disclaimer
 
+# --- preflight: Debian/Ubuntu binary addons --------------------------------
+# The kodi apt package on Debian/Ubuntu doesn't pull in the binary helper
+# addons we depend on. Warn (don't auto-install -- that needs sudo) so the
+# user can apt them in before the wizard's "Install official addons" step
+# tries to resolve dependencies and fails.
+check_debian_kodi_helpers() {
+  if ! command -v dpkg >/dev/null 2>&1; then return; fi
+  if ! command -v kodi >/dev/null 2>&1; then return; fi
+  local needed=()
+  for pkg in kodi-inputstream-adaptive kodi-pvr-iptvsimple kodi-inputstream-rtmp; do
+    if ! dpkg -l "$pkg" 2>/dev/null | grep -q '^ii'; then
+      needed+=("$pkg")
+    fi
+  done
+  if (( ${#needed[@]} )); then
+    warn "Missing Kodi binary addons on this Debian-family box:"
+    for p in "${needed[@]}"; do echo "    - $p" >&2; done
+    warn "Install them OR the wizard's 'Install official addons' step will fail:"
+    echo  "    sudo apt-get install -y ${needed[*]}" >&2
+    echo  "" >&2
+  fi
+}
+check_debian_kodi_helpers
+
 # --- detect Kodi userdata ---------------------------------------------------
 detect_userdata() {
   if [[ -n "${KODI_USERDATA:-}" && -d "$KODI_USERDATA" ]]; then
