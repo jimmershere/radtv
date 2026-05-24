@@ -38,10 +38,18 @@ jobs:
         run: pip install --quiet pyyaml
 
       - name: Build playlist + EPG
+        env:
+          # Bake the raw.githubusercontent.com URL into the M3U's url-tvg
+          # header so end-user PVR clients can find the EPG. Without this
+          # override the script defaults to file:// against the runner's
+          # ephemeral path, which obviously doesn't resolve in users' Kodi.
+          EPG_PUBLIC_URL: "https://raw.githubusercontent.com/${{ github.repository }}/main/iptv/dist/badtv.xml"
         run: |
-          python3 iptv/build-playlist.py
+          python3 iptv/build-playlist.py --epg-url "$EPG_PUBLIC_URL"
           echo "--- output ---"
           ls -lh iptv/dist/
+          echo "--- m3u header ---"
+          head -1 iptv/dist/badtv.m3u
 
       - name: Sanity-check sizes
         run: |
