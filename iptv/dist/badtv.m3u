@@ -1,4 +1,4 @@
-#EXTM3U url-tvg="file:///home/runner/work/badtv/badtv/iptv/dist/badtv.xml"
+#EXTM3U url-tvg="https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.xml"
 #EXTINF:-1 tvg-id="mjh-sky-popup1" tvg-logo="https://cdn.fullscreen.nz/v1/images/channel/linear/popup1/logos/default.png" group-title="MJH / Nz",ThreeNow Sport 1
 https://i.mjh.nz/.r/sky-popup1.m3u8|seekable=0
 #EXTINF:-1 tvg-id="mjh-sky-hgtv" tvg-logo="https://cdn.fullscreen.nz/v1/images/channel/linear/hgtv/logos/default.png" group-title="MJH / Nz",HGTV
