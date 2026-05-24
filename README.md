@@ -48,19 +48,41 @@ free / lawful US linear sources, the strongest community scrapers, and
 ## Quick install
 
 ```bash
-git clone https://github.com/jimmershere/badtv.git && cd badtv
-
-# Optional: override defaults (floor2 host, repo URL, skin, IPTV toggles)
-cp config/badtv.conf.example config/badtv.conf && $EDITOR config/badtv.conf
-
-make all                # build IPTV playlist + addon zips + branded assets
-bash install.sh         # patch local Kodi userdata in place
+git clone https://github.com/jimmershere/badtv.git
+cd badtv
+./badtv setup
 ```
 
-Then launch Kodi, **Install from zip file** → pick
-`dist/repository.badtv-2.0.0.zip`, and run **B@Dtv Wizard** from Programs.
+That single command is the entire first run. It:
 
-Full walkthrough: [`docs/INSTALL.md`](docs/INSTALL.md).
+1. apt-installs Kodi + every binary helper addon Debian doesn't bundle by
+   default (`kodi-inputstream-adaptive`, `kodi-pvr-iptvsimple`, `mpv`,
+   `wireguard-tools`, `nftables`, ...).
+2. Stands up a VPN (ExpressVPN / Mullvad / Proton / IVPN / generic
+   WireGuard / skip) with a kill-switch.
+3. Bootstraps `~/.kodi/userdata/` and writes a sane
+   `advancedsettings.xml` for streaming.
+4. Drops the B@Dtv repository + wizard addons into
+   `~/.kodi/addons/`.
+5. Pulls Kodi-official addons (YouTube, Pluto TV, Crackle, PlexMod,
+   Arctic Zephyr MOD skin) straight from `mirrors.kodi.tv` -- bypasses
+   Kodi entirely so dependency resolution can't fail mid-run.
+6. Wires PVR IPTV Simple Client at the 11,842-channel B@Dtv playlist.
+7. Copies the B@Dtv color override into the skin.
+8. Walks you through Real-Debrid + Trakt device-code OAuth (skippable).
+9. Stream-tests one channel via `mpv` so you know whether your network
+   actually lets IPTV through *before* you start clicking around Kodi.
+10. Launches Kodi in `--standalone -fs` kiosk mode.
+
+After setup, the **in-Kodi wizard** (Programs → B@Dtv Wizard) drops to
+maintenance mode -- refresh scraper catalog, check anonymizer status,
+add NAS sources, re-apply the theme, run a library scan. None of the
+fragile install steps live there.
+
+Status: `./badtv status`.  Re-run one step: `./badtv repair <step>`.
+Just launch Kodi: `./badtv launch`.
+
+Long-form: [`docs/INSTALL.md`](docs/INSTALL.md).
 
 ## Theme
 

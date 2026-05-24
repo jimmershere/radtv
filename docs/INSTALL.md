@@ -55,13 +55,27 @@ distro package.
 ```bash
 git clone https://github.com/jimmershere/badtv.git
 cd badtv
-
-# Optional: edit floor2 host, repo URL, skin target, IPTV toggles
-cp config/badtv.conf.example config/badtv.conf
-
-make all                # builds iptv/dist/badtv.{m3u,xml} + dist/*.zip + assets
-bash install.sh         # patches the local Kodi userdata in place
+./badtv setup
 ```
+
+That single command runs the full host-side bootstrap: apt deps, VPN,
+Kodi userdata, addon downloads from `mirrors.kodi.tv`, PVR config,
+Real-Debrid + Trakt OAuth, stream test, kiosk-mode launch. State is
+persisted in `~/.config/badtv/state.json` so a partial run can pick up
+with `./badtv setup` again.
+
+Useful subcommands:
+
+```bash
+./badtv status                  # what's done, what isn't
+./badtv repair install_official # re-run a single step
+./badtv launch                  # just start Kodi
+./badtv setup --force           # re-do every step
+```
+
+The old `make all` + `bash install.sh` path still exists but is now a
+subset of what `./badtv setup` does -- it skips apt, VPN, addon
+downloads, and OAuth. Prefer the host-side wizard.
 
 Then open Kodi:
 

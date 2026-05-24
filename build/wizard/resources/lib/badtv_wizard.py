@@ -1,8 +1,20 @@
-"""Top-level wizard menu loop.
+"""B@Dtv in-Kodi wizard -- maintenance-mode menu.
 
-Surfaces every action defined in ``actions`` through a single repeated
-xbmcgui.Dialog().select() so the wizard feels like a checklist rather than a
-one-shot.
+First-run setup (install Kodi binary addons, VPN, addon downloads, PVR
+config, OAuth, skin theme) is done by the HOST-SIDE bootstrap script
+(`./badtv setup` in the repo). The in-Kodi wizard is intentionally
+narrower now: it surfaces the runtime maintenance actions that make
+sense to do from the couch with a remote -- catalog refresh, anonymizer
+status check, library scan, theme reapply, NAS sources, third-party
+scraper installs from the live catalog.
+
+If you're seeing this menu and B@Dtv isn't set up yet, run on your
+laptop:
+
+    ./badtv setup
+
+(the README has the full walk-through). Everything in this menu assumes
+the host-side bootstrap has already done the heavy lifting.
 """
 from __future__ import annotations
 
@@ -15,9 +27,8 @@ MenuItem = Tuple[str, Callable[[], None]]
 
 
 def _menu() -> List[MenuItem]:
+    # Maintenance-mode only. Setup-time actions live in bootstrap.py.
     return [
-        ("Install official addons (IPTV, YouTube, Tubi, Pluto, Plex, A4K Subs, skin)",
-         actions.install_official_addons),
         ("Show third-party scrapers (live catalog)",
          actions.show_third_party_addons),
         ("Install a third-party scraper from the catalog",
@@ -26,14 +37,6 @@ def _menu() -> List[MenuItem]:
          actions.refresh_catalog_now),
         ("Check anonymizer status (current public IP)",
          actions.check_anonymizer_status),
-        ("Configure PVR IPTV Simple Client (B@Dtv playlist + EPG)",
-         actions.configure_pvr),
-        ("Authorize Real-Debrid (via URLResolver)",
-         actions.authorize_real_debrid),
-        ("Authorize Trakt in Umbrella",
-         lambda: actions.authorize_trakt_in("plugin.video.umbrella")),
-        ("Authorize Trakt in Seren",
-         lambda: actions.authorize_trakt_in("plugin.video.seren")),
         ("Add floor2 NFS media sources to Kodi",
          actions.add_floor2_sources),
         ("Apply B@Dtv theme to current skin",
@@ -49,7 +52,7 @@ def run() -> int:
     while True:
         items = _menu()
         labels = [label for label, _ in items] + ["Exit"]
-        choice = ku.select("B@Dtv Wizard", labels)
+        choice = ku.select("B@Dtv Wizard  -  maintenance mode", labels)
         if choice is None or choice == len(items):
             return 0
         label, fn = items[choice]

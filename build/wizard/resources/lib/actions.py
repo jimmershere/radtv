@@ -233,15 +233,17 @@ def run_library_scan() -> None:
 
 def show_about() -> None:
     body = (
-        "[B]B@Dtv[/B] — TheClawFirm's Hell's Kitchen-grade Kodi build.\n\n"
-        "Black Donnellys-inspired palette: whiskey amber, blood brick, "
-        "deep emerald, parchment, soot black.\n\n"
+        "[B]B@Dtv[/B]  -  Hell's Kitchen-grade Kodi.\n\n"
+        "This in-Kodi wizard is [B]maintenance mode[/B]. First-run setup "
+        "(installing Kodi binary addons, VPN, addons, OAuth, skin theme) "
+        "is done by the host-side bootstrap on your laptop:\n\n"
+        "    ./badtv setup\n\n"
         "Source: https://github.com/jimmershere/badtv\n\n"
         "[B]Legal & privacy:[/B]\n"
         "  - DISCLAIMER.md (no warranty, user responsibility)\n"
         "  - NOTICE.md (third-party trademarks)\n"
         "  - docs/PRIVACY.md (VPN + DNS guidance)\n\n"
-        "[I]B@Dtv is not affiliated with NBCUniversal, the XBMC Foundation, or any "
-        "scraper/streaming service. Don't use B@Dtv to infringe copyright.[/I]"
+        "[I]B@Dtv is not affiliated with NBCUniversal, the XBMC Foundation, or "
+        "any scraper/streaming service. Don't use B@Dtv to infringe copyright.[/I]"
     )
     ku.info("About B@Dtv", body)

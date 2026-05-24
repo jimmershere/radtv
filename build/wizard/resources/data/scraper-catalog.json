@@ -1,101 +1,29 @@
 {
   "schema_version": 1,
-  "updated": "2026-05-24T00:00:00Z",
+  "updated": "2026-05-24T11:41:39Z",
   "generator": "tools/refresh-scrapers.py",
   "comment": "Canonical B@Dtv catalog of third-party scraper repos. Refreshed daily by .github/workflows/refresh-scrapers.yml; the wizard fetches the latest at runtime and falls back to this bundled copy when offline. Hand-edit ONLY to add a new scraper or a new mirror URL; let the script manage `status`, `version`, and `last_seen_ok` fields.",
   "scrapers": [
     {
-      "id": "umbrella",
-      "name": "Umbrella",
-      "addon_id": "plugin.video.umbrella",
+      "id": "asgard",
+      "name": "Asgard",
+      "addon_id": "plugin.video.asgard",
       "category": "scraper",
-      "description": "All-around movie/TV scraper. Real-Debrid + Trakt. Best daily-driver in the stack.",
-      "tags": ["movies", "tv", "real-debrid", "trakt"],
+      "description": "Modern fork-line scraper. Active maintenance, Debrid-friendly.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid"
+      ],
       "repos": [
         {
-          "url": "https://a4k-openproject.github.io/a4kScrapers/repo/",
-          "addons_xml": "https://a4k-openproject.github.io/a4kScrapers/repo/addons.xml",
-          "label": "a4k-openproject",
-          "status": "unknown",
+          "url": "https://kodiversum.github.io/",
+          "addons_xml": "https://kodiversum.github.io/addons.xml",
+          "label": "kodiversum",
+          "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": null
-        }
-      ]
-    },
-    {
-      "id": "seren",
-      "name": "Seren",
-      "addon_id": "plugin.video.seren",
-      "category": "scraper",
-      "description": "Premium Real-Debrid-first scraper. Polished playback and cached-source workflows.",
-      "tags": ["movies", "tv", "real-debrid", "trakt"],
-      "repos": [
-        {
-          "url": "https://nixgates.github.io/packages/",
-          "addons_xml": "https://nixgates.github.io/packages/addons.xml",
-          "label": "nixgates",
-          "status": "unknown",
-          "version": "",
-          "last_seen_ok": null,
-          "last_checked": null
-        }
-      ]
-    },
-    {
-      "id": "thecrew",
-      "name": "The Crew",
-      "addon_id": "plugin.video.thecrew",
-      "category": "scraper",
-      "description": "Multi-source workhorse including sports sections. Broad fallback coverage.",
-      "tags": ["movies", "tv", "sports"],
-      "repos": [
-        {
-          "url": "https://team-crew.github.io/",
-          "addons_xml": "https://team-crew.github.io/addons.xml",
-          "label": "team-crew",
-          "status": "unknown",
-          "version": "",
-          "last_seen_ok": null,
-          "last_checked": null
-        }
-      ]
-    },
-    {
-      "id": "fenlight",
-      "name": "FEN Light",
-      "addon_id": "plugin.video.fenlight",
-      "category": "scraper",
-      "description": "Fast, clean, Real-Debrid optimized. Lower-overhead fork of FEN.",
-      "tags": ["movies", "tv", "real-debrid"],
-      "repos": [
-        {
-          "url": "https://tikipeter.github.io/",
-          "addons_xml": "https://tikipeter.github.io/addons.xml",
-          "label": "tikipeter",
-          "status": "unknown",
-          "version": "",
-          "last_seen_ok": null,
-          "last_checked": null
-        }
-      ]
-    },
-    {
-      "id": "scrubsv2",
-      "name": "Scrubs V2",
-      "addon_id": "plugin.video.scrubsv2",
-      "category": "scraper",
-      "description": "Lightweight free-link backup. Simple menus, low maintenance.",
-      "tags": ["movies", "tv", "free"],
-      "repos": [
-        {
-          "url": "https://a4k-openproject.github.io/a4kScrapers/repo/",
-          "addons_xml": "https://a4k-openproject.github.io/a4kScrapers/repo/addons.xml",
-          "label": "a4k-openproject",
-          "status": "unknown",
-          "version": "",
-          "last_seen_ok": null,
-          "last_checked": null
+          "last_checked": "2026-05-24T11:41:38Z"
         }
       ]
     },
@@ -105,54 +33,43 @@
       "addon_id": "plugin.video.exodusredux",
       "category": "scraper",
       "description": "Classic Exodus-style layout. Familiar to longtime Kodi users.",
-      "tags": ["movies", "tv", "legacy"],
+      "tags": [
+        "movies",
+        "tv",
+        "legacy"
+      ],
       "repos": [
         {
           "url": "https://a4k-openproject.github.io/a4kScrapers/repo/",
           "addons_xml": "https://a4k-openproject.github.io/a4kScrapers/repo/addons.xml",
           "label": "a4k-openproject",
-          "status": "unknown",
+          "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": null
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
     {
-      "id": "venom",
-      "name": "Venom",
-      "addon_id": "plugin.video.venom",
+      "id": "fenlight",
+      "name": "FEN Light",
+      "addon_id": "plugin.video.fenlight",
       "category": "scraper",
-      "description": "Long-running community scraper with broad provider coverage.",
-      "tags": ["movies", "tv"],
+      "description": "Fast, clean, Real-Debrid optimized. Lower-overhead fork of FEN.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid"
+      ],
       "repos": [
         {
-          "url": "https://kodiversum.github.io/",
-          "addons_xml": "https://kodiversum.github.io/addons.xml",
-          "label": "kodiversum",
-          "status": "unknown",
+          "url": "https://tikipeter.github.io/",
+          "addons_xml": "https://tikipeter.github.io/addons.xml",
+          "label": "tikipeter",
+          "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": null
-        }
-      ]
-    },
-    {
-      "id": "asgard",
-      "name": "Asgard",
-      "addon_id": "plugin.video.asgard",
-      "category": "scraper",
-      "description": "Modern fork-line scraper. Active maintenance, Debrid-friendly.",
-      "tags": ["movies", "tv", "real-debrid"],
-      "repos": [
-        {
-          "url": "https://kodiversum.github.io/",
-          "addons_xml": "https://kodiversum.github.io/addons.xml",
-          "label": "kodiversum",
-          "status": "unknown",
-          "version": "",
-          "last_seen_ok": null,
-          "last_checked": null
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     },
@@ -162,16 +79,136 @@
       "addon_id": "plugin.video.homelander",
       "category": "scraper",
       "description": "Newer community scraper with active dev. Debrid-first.",
-      "tags": ["movies", "tv", "real-debrid"],
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid"
+      ],
       "repos": [
         {
           "url": "https://kodi-community-repos.github.io/repo/",
           "addons_xml": "https://kodi-community-repos.github.io/repo/addons.xml",
           "label": "kodi-community-repos",
-          "status": "unknown",
+          "status": "down",
           "version": "",
           "last_seen_ok": null,
-          "last_checked": null
+          "last_checked": "2026-05-24T11:41:39Z"
+        }
+      ]
+    },
+    {
+      "id": "scrubsv2",
+      "name": "Scrubs V2",
+      "addon_id": "plugin.video.scrubsv2",
+      "category": "scraper",
+      "description": "Lightweight free-link backup. Simple menus, low maintenance.",
+      "tags": [
+        "movies",
+        "tv",
+        "free"
+      ],
+      "repos": [
+        {
+          "url": "https://a4k-openproject.github.io/a4kScrapers/repo/",
+          "addons_xml": "https://a4k-openproject.github.io/a4kScrapers/repo/addons.xml",
+          "label": "a4k-openproject",
+          "status": "down",
+          "version": "",
+          "last_seen_ok": null,
+          "last_checked": "2026-05-24T11:41:39Z"
+        }
+      ]
+    },
+    {
+      "id": "seren",
+      "name": "Seren",
+      "addon_id": "plugin.video.seren",
+      "category": "scraper",
+      "description": "Premium Real-Debrid-first scraper. Polished playback and cached-source workflows.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid",
+        "trakt"
+      ],
+      "repos": [
+        {
+          "url": "https://nixgates.github.io/packages/",
+          "addons_xml": "https://nixgates.github.io/packages/addons.xml",
+          "label": "nixgates",
+          "status": "down",
+          "version": "",
+          "last_seen_ok": null,
+          "last_checked": "2026-05-24T11:41:39Z"
+        }
+      ]
+    },
+    {
+      "id": "thecrew",
+      "name": "The Crew",
+      "addon_id": "plugin.video.thecrew",
+      "category": "scraper",
+      "description": "Multi-source workhorse including sports sections. Broad fallback coverage.",
+      "tags": [
+        "movies",
+        "tv",
+        "sports"
+      ],
+      "repos": [
+        {
+          "url": "https://team-crew.github.io/",
+          "addons_xml": "https://team-crew.github.io/addons.xml",
+          "label": "team-crew",
+          "status": "down",
+          "version": "",
+          "last_seen_ok": null,
+          "last_checked": "2026-05-24T11:41:39Z"
+        }
+      ]
+    },
+    {
+      "id": "umbrella",
+      "name": "Umbrella",
+      "addon_id": "plugin.video.umbrella",
+      "category": "scraper",
+      "description": "All-around movie/TV scraper. Real-Debrid + Trakt. Best daily-driver in the stack.",
+      "tags": [
+        "movies",
+        "tv",
+        "real-debrid",
+        "trakt"
+      ],
+      "repos": [
+        {
+          "url": "https://a4k-openproject.github.io/a4kScrapers/repo/",
+          "addons_xml": "https://a4k-openproject.github.io/a4kScrapers/repo/addons.xml",
+          "label": "a4k-openproject",
+          "status": "down",
+          "version": "",
+          "last_seen_ok": null,
+          "last_checked": "2026-05-24T11:41:39Z"
+        }
+      ]
+    },
+    {
+      "id": "venom",
+      "name": "Venom",
+      "addon_id": "plugin.video.venom",
+      "category": "scraper",
+      "description": "Long-running community scraper with broad provider coverage.",
+      "tags": [
+        "movies",
+        "tv"
+      ],
+      "repos": [
+        {
+          "url": "https://kodiversum.github.io/",
+          "addons_xml": "https://kodiversum.github.io/addons.xml",
+          "label": "kodiversum",
+          "status": "down",
+          "version": "",
+          "last_seen_ok": null,
+          "last_checked": "2026-05-24T11:41:39Z"
         }
       ]
     }

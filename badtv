@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Thin shim around bootstrap.py. Lets users run `./badtv setup` without
+# remembering to invoke python3 themselves.
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$HERE/bootstrap.py" "$@"
