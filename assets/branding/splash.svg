@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="B@Dtv splash">
+  <title>B@Dtv splash screen</title>
+  <defs>
+    <radialGradient id="lamp" cx="0.5" cy="0.45" r="0.65">
+      <stop offset="0"   stop-color="#D4A24C" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#231613" stop-opacity="0.0"/>
+      <stop offset="1"   stop-color="#000"    stop-opacity="0.0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#0B0B0D"/>
+  <rect width="1920" height="1080" fill="url(#lamp)"/>
+
+  <g transform="translate(960 560)" font-family="Cinzel, Georgia, serif" font-weight="700"
+     text-anchor="middle" fill="#E8DCC0">
+    <text x="-360" y="0" font-size="280">B</text>
+    <g transform="translate(0 0) rotate(6)">
+      <text x="0" y="0" font-size="320" fill="#D4A24C">@</text>
+    </g>
+    <text x="360" y="0" font-size="280">D</text>
+    <text x="600" y="0" font-size="280" font-style="italic">t</text>
+    <text x="800" y="0" font-size="280" font-style="italic">v</text>
+  </g>
+
+  <rect x="560" y="640" width="800" height="6" fill="#6B1A1F"/>
+  <text x="960" y="700" text-anchor="middle"
+        font-family="Inter, sans-serif" font-size="26"
+        fill="#A89E84" letter-spacing="10">LOADING THE BACK ROOM</text>
+</svg>

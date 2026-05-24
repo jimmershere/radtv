@@ -1,0 +1,53 @@
+# B@Dtv configuration
+# Copy this file to `config/badtv.conf` and edit. install.sh and the
+# media-server scripts read from `config/badtv.conf` if present, otherwise
+# fall back to these defaults.
+#
+# Syntax: plain shell. Variables are exported by `config/load.sh`.
+
+# --- Branding -----------------------------------------------------------------
+BADTV_NAME="B@Dtv"
+BADTV_VERSION="2.0.0"
+BADTV_REPO_OWNER="jimmershere"
+BADTV_REPO_NAME="badtv"
+BADTV_REPO_URL="https://github.com/${BADTV_REPO_OWNER}/${BADTV_REPO_NAME}"
+BADTV_REPO_RAW_URL="https://raw.githubusercontent.com/${BADTV_REPO_OWNER}/${BADTV_REPO_NAME}/main"
+
+# --- Media server (floor2 by default) -----------------------------------------
+# The local-network NAS where movies/TV/music live. NFS exports + Samba shares
+# get configured against this host.
+FLOOR2_HOST="192.168.1.206"
+FLOOR2_USER="badtv"
+FLOOR2_ZFS_POOL="datapool"
+FLOOR2_ZFS_DATASET="${FLOOR2_ZFS_POOL}/media"
+FLOOR2_MOUNTPOINT="/media"
+FLOOR2_SUBDIRS=("Movies" "TV" "Music" "Photos")
+FLOOR2_NFS_CLIENT_SPEC="192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)"
+
+# --- Kodi userdata detection --------------------------------------------------
+# Leave blank to auto-detect (~/.kodi, ~/Library/Application Support/Kodi, etc.).
+# Override if you keep multiple Kodi profiles or a portable build.
+KODI_USERDATA=""
+
+# --- IPTV ---------------------------------------------------------------------
+# The IPTV builder pulls these into iptv/dist/badtv.m3u + badtv.xml. Detailed
+# source list lives in iptv/sources.yaml -- this just toggles broad categories.
+IPTV_INCLUDE_US_FREE=1
+IPTV_INCLUDE_INTERNATIONAL=1
+IPTV_INCLUDE_NEWS=1
+IPTV_INCLUDE_SPORTS=1
+IPTV_INCLUDE_MUSIC=1
+IPTV_EPG_DAYS=3
+
+# --- Optional services --------------------------------------------------------
+# Authorization happens inside Kodi (the wizard launches the OAuth-style device
+# code flows). These flags just toggle whether the wizard prompts.
+ENABLE_REAL_DEBRID=1
+ENABLE_TRAKT=1
+ENABLE_EASYNEWS=0
+ENABLE_PREMIUMIZE=0
+
+# --- Skin ---------------------------------------------------------------------
+# Which skin to apply the B@Dtv color override against.
+# Valid: "arctic-zephyr-reloaded" | "estuary-mod-v2" | "estuary" | "none"
+BADTV_SKIN_TARGET="arctic-zephyr-reloaded"

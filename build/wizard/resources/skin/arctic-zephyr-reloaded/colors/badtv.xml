@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  B@Dtv color override for Arctic Zephyr Reloaded
+  ------------------------------------------------
+  Drop this file at:
+      <kodi>/addons/skin.arctic.zephyr.reloaded/colors/badtv.xml
+  Then in Kodi: Settings > Skin > Colors > "badtv".
+
+  The wizard's "Apply B@Dtv theme" action does the copy + selection for you.
+  Color tokens come from assets/colors/tokens.md.
+-->
+<colors>
+  <!-- Backgrounds -->
+  <color name="background">FF0B0B0D</color>
+  <color name="background_alt">FF1A0F0E</color>
+  <color name="background_panel">FF231613</color>
+  <color name="background_dialog">F50B0B0D</color>
+
+  <!-- Foreground / text -->
+  <color name="text">FFE8DCC0</color>
+  <color name="text_alt">FFA89E84</color>
+  <color name="text_dim">CCA89E84</color>
+  <color name="text_disabled">7F3A332D</color>
+
+  <!-- Brand accents -->
+  <color name="focus">FFD4A24C</color>
+  <color name="button_focus">FFD4A24C</color>
+  <color name="selected">FFD4A24C</color>
+  <color name="highlight">FFD4A24C</color>
+  <color name="hover">FF8A6A2A</color>
+
+  <!-- Semantic -->
+  <color name="success">FF1F6E4F</color>
+  <color name="warning">FFD4A24C</color>
+  <color name="danger">FF6B1A1F</color>
+  <color name="critical">FF3F0707</color>
+
+  <!-- Skin chrome -->
+  <color name="separator">66D4A24C</color>
+  <color name="border">FF6B1A1F</color>
+  <color name="progress_track">FF3A332D</color>
+  <color name="progress_fill">FFD4A24C</color>
+
+  <!-- Now-playing / OSD -->
+  <color name="osd_background">E60B0B0D</color>
+  <color name="osd_text">FFE8DCC0</color>
+  <color name="osd_focus">FFD4A24C</color>
+
+  <!-- Live TV / EPG -->
+  <color name="epg_now">FFD4A24C</color>
+  <color name="epg_next">FFA89E84</color>
+  <color name="epg_recording">FF6B1A1F</color>
+</colors>

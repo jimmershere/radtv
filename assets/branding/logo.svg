@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-label="B@Dtv">
+  <title>B@Dtv wordmark</title>
+  <defs>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F0BE63"/>
+      <stop offset="1" stop-color="#A87421"/>
+    </linearGradient>
+    <linearGradient id="parch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F0E5C9"/>
+      <stop offset="1" stop-color="#C9BD9F"/>
+    </linearGradient>
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="360" fill="#0B0B0D"/>
+
+  <!-- subtle brick texture hint -->
+  <g opacity="0.07" fill="#6B1A1F">
+    <rect x="0"   y="40"  width="200" height="40"/>
+    <rect x="220" y="40"  width="200" height="40"/>
+    <rect x="440" y="40"  width="200" height="40"/>
+    <rect x="660" y="40"  width="200" height="40"/>
+    <rect x="880" y="40"  width="200" height="40"/>
+    <rect x="100" y="100" width="200" height="40"/>
+    <rect x="320" y="100" width="200" height="40"/>
+    <rect x="540" y="100" width="200" height="40"/>
+    <rect x="760" y="100" width="200" height="40"/>
+    <rect x="980" y="100" width="220" height="40"/>
+  </g>
+
+  <!-- wordmark: B @ D t v -->
+  <g font-family="Cinzel, 'Trajan Pro', Georgia, serif" font-weight="700"
+     text-anchor="middle" filter="url(#glow)">
+    <text x="180" y="250" font-size="220" fill="url(#parch)">B</text>
+    <g transform="translate(380 250) rotate(6)">
+      <text x="0" y="0" font-size="240" fill="url(#amber)" text-anchor="middle">@</text>
+    </g>
+    <text x="600" y="250" font-size="220" fill="url(#parch)">D</text>
+    <text x="800" y="250" font-size="220" fill="url(#parch)" font-style="italic">t</text>
+    <text x="980" y="250" font-size="220" fill="url(#parch)" font-style="italic">v</text>
+  </g>
+
+  <!-- brick-red underline -->
+  <rect x="120" y="290" width="960" height="6" fill="#6B1A1F"/>
+  <rect x="120" y="300" width="640" height="2" fill="#8A6A2A" opacity="0.6"/>
+
+  <!-- subhead -->
+  <text x="600" y="335" font-family="Inter, sans-serif" font-size="22"
+        fill="#A89E84" text-anchor="middle" letter-spacing="6">
+    HELL'S KITCHEN GRADE KODI
+  </text>
+</svg>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reference Kodi sources.xml snippet.
+
+  install.sh writes the real one at $KODI_USERDATA/sources.xml using the
+  FLOOR2_HOST from config/badtv.conf -- this file just documents what the
+  result looks like. Copy by hand only if install.sh isn't an option.
+-->
+<sources>
+  <video>
+    <source>
+      <name>floor2 Movies</name>
+      <path pathversion="1">nfs://192.168.1.206/media/Movies/</path>
+      <allowsharing>true</allowsharing>
+    </source>
+    <source>
+      <name>floor2 TV</name>
+      <path pathversion="1">nfs://192.168.1.206/media/TV/</path>
+      <allowsharing>true</allowsharing>
+    </source>
+  </video>
+  <music>
+    <source>
+      <name>floor2 Music</name>
+      <path pathversion="1">nfs://192.168.1.206/media/Music/</path>
+      <allowsharing>true</allowsharing>
+    </source>
+  </music>
+  <pictures>
+    <source>
+      <name>floor2 Photos</name>
+      <path pathversion="1">nfs://192.168.1.206/media/Photos/</path>
+      <allowsharing>true</allowsharing>
+    </source>
+  </pictures>
+</sources>

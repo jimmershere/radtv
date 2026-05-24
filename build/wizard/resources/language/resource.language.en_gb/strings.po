@@ -1,0 +1,52 @@
+## B@Dtv Wizard — English (UK) strings
+## ID range 30000-30999 reserved for the wizard.
+
+msgid ""
+msgstr ""
+"Project-Id-Version: B@Dtv Wizard\n"
+"Report-Msgid-Bugs-To: https://github.com/jimmershere/badtv/issues\n"
+"PO-Revision-Date: 2026-05-23\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgctxt "#30000"
+msgid "B@Dtv Wizard"
+msgstr ""
+
+msgctxt "#30001"
+msgid "Install official addons"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Show third-party scrapers"
+msgstr ""
+
+msgctxt "#30003"
+msgid "Configure PVR IPTV Simple Client"
+msgstr ""
+
+msgctxt "#30004"
+msgid "Authorize Real-Debrid"
+msgstr ""
+
+msgctxt "#30005"
+msgid "Authorize Trakt"
+msgstr ""
+
+msgctxt "#30006"
+msgid "Add floor2 NFS media sources"
+msgstr ""
+
+msgctxt "#30007"
+msgid "Apply B@Dtv theme"
+msgstr ""
+
+msgctxt "#30008"
+msgid "Run library scan"
+msgstr ""
+
+msgctxt "#30009"
+msgid "About B@Dtv"
+msgstr ""

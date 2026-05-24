@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  B@Dtv color override for stock Estuary (Kodi's default skin)
+  -----------------------------------------------------------
+  Drop this file at:
+      <kodi>/addons/skin.estuary/colors/badtv.xml
+  Then in Kodi: Settings > Skin > Colors > "badtv".
+-->
+<colors>
+  <color name="white">FFE8DCC0</color>
+  <color name="grey">FFA89E84</color>
+  <color name="grey3">FF3A332D</color>
+  <color name="black">FF0B0B0D</color>
+
+  <color name="button_focus">FFD4A24C</color>
+  <color name="button_nofocus">B3231613</color>
+  <color name="selected">FFD4A24C</color>
+  <color name="dialog_background">F50B0B0D</color>
+
+  <color name="text">FFE8DCC0</color>
+  <color name="text_dim">CCA89E84</color>
+  <color name="text_focus">FF0B0B0D</color>
+
+  <color name="accent">FFD4A24C</color>
+  <color name="accent_dim">FF8A6A2A</color>
+  <color name="brand">FF6B1A1F</color>
+  <color name="success">FF1F6E4F</color>
+  <color name="warning">FFD4A24C</color>
+  <color name="danger">FF6B1A1F</color>
+</colors>

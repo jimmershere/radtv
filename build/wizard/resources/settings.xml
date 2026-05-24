@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings version="1">
+  <section id="badtv">
+
+    <category id="general" label="General">
+      <group id="branding" label="Branding">
+        <setting id="badtv_repo_raw_url" type="string" label="B@Dtv repo raw URL"
+                 default="https://raw.githubusercontent.com/jimmershere/badtv/main"
+                 help="Where the wizard fetches the bundled IPTV playlist + EPG from." />
+      </group>
+    </category>
+
+    <category id="media_server" label="Media server (floor2)">
+      <group id="floor2" label="Floor2 NAS">
+        <setting id="floor2_host" type="string" label="Host or IP"
+                 default="192.168.1.206" />
+        <setting id="floor2_share_root" type="string" label="Share root path"
+                 default="/media" />
+      </group>
+    </category>
+
+    <category id="iptv" label="Live TV (PVR IPTV Simple)">
+      <group id="urls" label="Playlist + EPG">
+        <setting id="iptv_m3u_url" type="string" label="M3U URL (override)"
+                 default=""
+                 help="Leave blank to use the bundled B@Dtv playlist." />
+        <setting id="iptv_epg_url" type="string" label="EPG URL (override)"
+                 default="" />
+      </group>
+    </category>
+
+    <category id="theme" label="Theme">
+      <group id="skin" label="Skin">
+        <setting id="badtv_skin_target" type="select" label="Skin to theme"
+                 default="arctic-zephyr-reloaded"
+                 values="arctic-zephyr-reloaded|estuary-mod-v2|estuary" />
+      </group>
+    </category>
+
+    <category id="services" label="Services">
+      <group id="auth" label="Authorization">
+        <setting id="enable_real_debrid" type="bool" label="Prompt for Real-Debrid"
+                 default="true" />
+        <setting id="enable_trakt" type="bool" label="Prompt for Trakt"
+                 default="true" />
+      </group>
+    </category>
+
+  </section>
+</settings>
