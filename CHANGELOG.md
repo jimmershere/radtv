@@ -1,5 +1,63 @@
 # Changelog
 
+## 2.3.0 — Grey-area scraper auto-install + Kodi DB pre-enable (2026-05-24)
+
+### What landed
+
+- **Six new addons install themselves automatically** during `./badtv setup`:
+  Umbrella 6.7.75, The Crew 2.0.6, Seren 2.1.9, POV 6.05.13,
+  CocoScrapers 1.0.39, ResolveURL 5.1.199. Full dependency chains
+  (context.seren, script.module.future, script.module.simplejson,
+  script.module.thecrew, script.thecrew.artwork, script.module.myconnpy,
+  beautifulsoup4, etc.) resolve and install in one pass.
+- **Real-Debrid OAuth now propagates to every scraper**. Authorize once
+  via the wizard's device-code flow and the token gets written into
+  `script.module.resolveurl`, `plugin.video.umbrella`, `plugin.video.seren`,
+  and `plugin.video.pov` settings.xml in their addon-specific key schemas.
+  No more "open the addon, settings, accounts, RD, paste code" twenty-
+  click round once you're in Kodi.
+- **`step_grey_addons`** added between `install_official` and `pvr`. New
+  step count is **12** (was 11). Re-runnable via `./badtv repair grey_addons`.
+- **Pre-enable in Addons33.db**: Kodi 19+ defaults third-party-repo
+  addons to disabled with `disabledReason=1`. The bootstrap now writes
+  `enabled=1, disabledReason=0` rows BEFORE Kodi first launches, so the
+  user lands in a working install — none of the "Settings → Add-ons →
+  My add-ons → enable" pixel-hunt.
+
+### What was broken
+
+- **`pvr.iptvsimple/settings.xml`** was being parsed-then-rewritten with
+  Kodi's own copy still present, producing every key twice on every run.
+  Rewritten from scratch each pass now; idempotent and clean.
+- **`plugin.video.crackle`** dropped from `OFFICIAL_ADDONS` — upstream
+  marked the addon `<lifecyclestate type="broken">` AND `<platform>android</platform>`,
+  so it never registered on desktop Linux anyway. Saved a download + a
+  ghost dir in `~/.kodi/addons/`.
+- **`scraper-catalog.json` v2 schema**: every previous URL was 404 (the
+  github.io Pages mirrors all rotated). Refreshed to verified 2026 URLs
+  for Umbrella, The Crew, Seren, POV, CocoScrapers, ResolveURL. Five
+  scrapers retired to a new `retired:` block (Asgard, Venom, Homelander,
+  Exodus Redux, Scrubs V2 — all upstreams went dark with no migration).
+- **`pvrmanager.enabled`** + `epg.daystodisplay` written into
+  `guisettings.xml` so the PVR client actually starts populating channels
+  on the next launch instead of sitting dark.
+
+### How to verify after pull
+
+```
+./badtv repair install_official   # idempotent; re-enables in DB
+./badtv repair grey_addons        # installs full grey stack
+./badtv repair pvr                # clean PVR settings + pvrmanager.enabled
+./badtv launch
+```
+
+In Kodi: Add-ons → Video add-ons should list Umbrella + The Crew + Seren
++ POV. Click any of them; first browse triggers Real-Debrid auth check
+inside the addon (already populated from the wizard's RD step) and you
+should see thousands of titles via cached RD links.
+
+---
+
 ## 2.1.0 — Legal posture + privacy + self-updating catalog (2026-05-24)
 
 ### Legal

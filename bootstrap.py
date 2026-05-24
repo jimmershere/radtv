@@ -46,7 +46,7 @@ from xml.etree import ElementTree as ET
 
 # --- constants ---------------------------------------------------------------
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 STATE_DIR = os.path.expanduser("~/.config/badtv")
 STATE_PATH = os.path.join(STATE_DIR, "state.json")
@@ -73,15 +73,78 @@ DEBIAN_PKGS = [
 
 # Addons confirmed present in mirrors.kodi.tv/addons/nexus (verified live).
 # Anything community-only (Tubi, A4K Subtitles, Umbrella, etc.) needs its
-# upstream repo zip and is left to the maintenance-mode in-Kodi wizard
-# acting on the scraper catalog.
+# upstream repo zip and is installed by step_grey_addons below.
+#
+# Dropped 2026-05-24: plugin.video.crackle (upstream marked
+# <lifecyclestate type="broken"> + <platform>android</platform>, so Kodi
+# silently refuses to register it on desktop Linux anyway).
 OFFICIAL_ADDONS = [
     "plugin.video.youtube",
     "plugin.video.plutotv",
-    "plugin.video.crackle",
     "script.plexmod",
     "skin.arctic.zephyr.mod",
 ]
+
+# --- Grey-area scraper stack (Real-Debrid / Trakt / AllDebrid driven) ------
+#
+# Each entry is a Kodi repository served as a single zip at the root of a
+# GitHub Pages site (or similar). The bootstrap downloads the wrapper repo
+# zip, extracts the inner `repository.<name>` addon, parses its addon.xml,
+# picks the <dir> block matching this host's Kodi major (Nexus 20 = nexus,
+# Omega 21 = omega, Matrix 19 = matrix), then resolves and installs the
+# named `plugins` plus their full dependency tree.
+#
+# Live verified 2026-05-24. If a URL rots, the in-Kodi wizard's catalog
+# refresh and `tools/refresh-scrapers.py` will flag it; the canonical list
+# lives in addons/scraper-catalog.json and is reproduced here for the
+# pre-Kodi bootstrap which can't talk to the wizard yet.
+GREY_REPOS: List[Dict[str, Any]] = [
+    {
+        "name": "ResolveURL",
+        # No wrapper repo zip -- the addons.xml is served directly.
+        "repo_zip_url": None,
+        "addons_xml": {
+            "nexus":  "https://raw.githubusercontent.com/Gujal00/smrzips/master/addons.xml",
+            "omega":  "https://raw.githubusercontent.com/Gujal00/smrzips/master/addons.xml",
+            "matrix": "https://raw.githubusercontent.com/Gujal00/smrzips/master/addons.xml",
+        },
+        "datadir":  "https://raw.githubusercontent.com/Gujal00/smrzips/master/zips/",
+        "plugins":  ["script.module.resolveurl"],
+    },
+    {
+        "name": "CocoScrapers",
+        "repo_zip_url": "https://cocojoe2411.github.io/repository.cocoscrapers-1.0.1.zip",
+        "plugins": ["script.module.cocoscrapers"],
+    },
+    {
+        "name": "Umbrella",
+        "repo_zip_url": "https://umbrellaplug.github.io/repository.umbrella-2.2.6.zip",
+        "plugins": ["plugin.video.umbrella"],
+    },
+    {
+        "name": "The Crew",
+        "repo_zip_url": "https://team-crew.github.io/repository.thecrew-0.3.8.zip",
+        "plugins": ["plugin.video.thecrew"],
+    },
+    {
+        "name": "Seren",
+        "repo_zip_url": "https://nixgates.github.io/packages/repository.nixgates-2.2.0.zip",
+        "plugins": ["plugin.video.seren"],
+    },
+    {
+        "name": "POV",
+        "repo_zip_url": "https://kodifitzwell.github.io/repo/repository.kodifitzwell-0.0.1.zip",
+        "plugins": ["plugin.video.pov"],
+    },
+]
+
+# Apt-managed binary addons -- their metadata lives under /usr/share/kodi
+# and there's no zip in any mirror to fall back on. Dep resolver must
+# stop on these instead of 404'ing.
+DEBIAN_PROVIDED = {
+    "inputstream.adaptive", "inputstream.rtmp", "inputstream.ffmpegdirect",
+    "pvr.iptvsimple", "pvr.hts", "vfs.libarchive",
+}
 SKIN_ID = "skin.arctic.zephyr.mod"
 SKIN_THEME_NAME = "badtv"
 SKIN_OVERRIDE_DIR_NAME = "arctic-zephyr-mod"
@@ -377,7 +440,7 @@ def sudo_keepalive_loop_start() -> subprocess.Popen:
 # === STEPS ==================================================================
 
 def step_disclaimer(state: Dict[str, Any]) -> bool:
-    header("Step 1 / 11  ·  Legal disclaimer")
+    header("Step 1 / 12  ·  Legal disclaimer")
     if is_done(state, "disclaimer"):
         ok("already accepted on a prior run")
         return True
@@ -393,7 +456,7 @@ def step_disclaimer(state: Dict[str, Any]) -> bool:
 
 
 def step_apt(state: Dict[str, Any]) -> bool:
-    header("Step 2 / 11  ·  System packages (apt)")
+    header("Step 2 / 12  ·  System packages (apt)")
     if not shutil.which("apt-get"):
         warn("not on a Debian/Ubuntu box -- skipping. Install Kodi + binary "
              "addons + mpv + wireguard-tools + nftables manually for your distro.")
@@ -433,7 +496,7 @@ def step_apt(state: Dict[str, Any]) -> bool:
 
 
 def step_kodi_userdata(state: Dict[str, Any]) -> bool:
-    header("Step 3 / 11  ·  Bootstrap Kodi userdata")
+    header("Step 3 / 12  ·  Bootstrap Kodi userdata")
     os.makedirs(KODI_USERDATA, exist_ok=True)
     os.makedirs(KODI_ADDONS, exist_ok=True)
     os.makedirs(os.path.join(KODI_USERDATA, "addon_data"), exist_ok=True)
@@ -468,7 +531,7 @@ def step_kodi_userdata(state: Dict[str, Any]) -> bool:
 
 
 def step_vpn(state: Dict[str, Any]) -> bool:
-    header("Step 4 / 11  ·  VPN")
+    header("Step 4 / 12  ·  VPN")
     if is_done(state, "vpn"):
         ok("already configured on a prior run "
            f"(provider: {state.get('vars', {}).get('vpn_provider', '?')})")
@@ -642,7 +705,7 @@ def verify_exit_ip() -> None:
 
 def step_install_repo_addon(state: Dict[str, Any]) -> bool:
     """Install the B@Dtv repository addon and wizard addon from local zips."""
-    header("Step 5 / 11  ·  B@Dtv addons (repository + wizard)")
+    header("Step 5 / 12  ·  B@Dtv addons (repository + wizard)")
     for name in ["repository.badtv-2.0.0.zip", "script.badtv.wizard-2.0.0.zip"]:
         local = os.path.join(REPO_ROOT, "dist", name)
         if not os.path.isfile(local):
@@ -662,12 +725,32 @@ def step_install_repo_addon(state: Dict[str, Any]) -> bool:
 
 def step_install_official(state: Dict[str, Any]) -> bool:
     """Download Kodi-official addons directly from mirrors.kodi.tv."""
-    header("Step 6 / 11  ·  Kodi-official addons")
+    header("Step 6 / 12  ·  Kodi-official addons")
+
+    # If the addons already exist on disk from a prior run, the only thing
+    # left to do is make sure they're enabled in Addons33.db. Skip the
+    # network fetch entirely when nothing needs installing -- this keeps
+    # `./badtv repair install_official` working in the field even if
+    # mirrors.kodi.tv is unreachable.
+    missing = [a for a in OFFICIAL_ADDONS
+               if not os.path.isdir(os.path.join(KODI_ADDONS, a))]
+    if not missing:
+        ok("all official addons already present on disk")
+        _kodi_db_enable(list(OFFICIAL_ADDONS) + ["service.iptv.manager"])
+        mark_done(state, "install_official")
+        return True
+
     info("Fetching addons.xml.gz from mirrors.kodi.tv ...")
     try:
         body = http_get(f"{KODI_MIRROR}/addons.xml.gz", timeout=60)
     except Exception as exc:
         err(f"could not fetch addons.xml.gz: {exc}")
+        # Best-effort: still flip enable on whatever IS on disk.
+        present = [a for a in OFFICIAL_ADDONS
+                   if os.path.isdir(os.path.join(KODI_ADDONS, a))]
+        if present:
+            _kodi_db_enable(present + ["service.iptv.manager"])
+            warn(f"enabled the {len(present)} addons that were already on disk")
         return False
     try:
         root = ET.fromstring(body)
@@ -682,13 +765,9 @@ def step_install_official(state: Dict[str, Any]) -> bool:
             versions[aid] = ver
     info(f"mirror lists {len(versions)} addons")
 
-    # Addons that ship as Debian apt packages -- they exist in the mirror
-    # but we install them via apt in step 2, so dep resolution should
-    # skip them to avoid spurious 404s for the per-platform binaries.
-    DEBIAN_PROVIDED = {
-        "inputstream.adaptive", "inputstream.rtmp", "inputstream.ffmpegdirect",
-        "pvr.iptvsimple", "pvr.hts", "vfs.libarchive",
-    }
+    # DEBIAN_PROVIDED: module-level constant -- addons shipped as apt
+    # packages whose metadata lives under /usr/share/kodi instead of
+    # ~/.kodi/addons. Skip during dep resolution to avoid spurious 404s.
     failed = []
     for aid in OFFICIAL_ADDONS:
         if aid not in versions:
@@ -752,12 +831,345 @@ def step_install_official(state: Dict[str, Any]) -> bool:
 
     if failed:
         warn(f"failed: {', '.join(failed)} (re-run `./badtv repair install_official` later)")
+
+    # Pre-enable everything in OFFICIAL_ADDONS + the deps we just installed.
+    # Same logic as step_grey_addons: Kodi 19+ disables third-party-repo
+    # additions by default, and even Kodi-official ones occasionally land
+    # in the installed table with disabledReason=1 because they weren't
+    # part of the initial first-launch scan.
+    _kodi_db_enable(sorted(set(OFFICIAL_ADDONS) | seen))
+
     mark_done(state, "install_official")
     return True
 
 
+# --- generic Kodi-repo chain installer --------------------------------------
+#
+# Each scraper repo we ship serves a single "wrapper" zip at its github.io
+# root. That wrapper extracts to ~/.kodi/addons/repository.<something>/, whose
+# addon.xml lists version-keyed addons.xml URLs for the actual addon zips.
+# This function automates the whole chain so the user never sees
+# Files-Manager-add-source > Install-from-zip > Install-from-repository.
+
+def _kodi_major_tag() -> str:
+    """Return a tag matching the <dir minversion=.../> blocks in repo
+    addon.xmls. 19=matrix, 20=nexus, 21=omega, 22=piers."""
+    try:
+        cp = subprocess.run(["kodi", "--version"], capture_output=True,
+                            text=True, timeout=5)
+        m = re.search(r'\b(\d+)\.\d+', cp.stdout)
+        if m:
+            major = int(m.group(1))
+            return {19: "matrix", 20: "nexus", 21: "omega",
+                    22: "piers"}.get(major, "nexus")
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+    return "nexus"  # safest default for Ubuntu LTS Kodi
+
+
+def _all_dir_blocks(repo_addon_xml: ET.Element, major_tag: str) -> List[Tuple[str, str]]:
+    """Walk every <dir minversion/maxversion> block in the repo addon.xml
+    and return EACH one that matches this Kodi major. Many repos ship
+    multiple mirrors (e.g. The Crew lists 4 fallback URLs); we keep all
+    matches so the dep resolver can try them in order until one has the
+    addon we want."""
+    target = {"matrix": (19, 0, 0), "nexus": (20, 0, 0),
+              "omega":  (21, 0, 0), "piers": (22, 0, 0)}.get(major_tag, (20, 0, 0))
+
+    def _parse(v: str) -> Tuple[int, int, int]:
+        try:
+            parts = (v + ".0.0.0").split(".")[:3]
+            return tuple(int(re.match(r"\d+", p).group(0)) for p in parts)  # type: ignore[return-value]
+        except Exception:
+            return (0, 0, 0)
+
+    out: List[Tuple[str, str]] = []
+    for d in repo_addon_xml.findall(".//extension/dir"):
+        minv = _parse(d.get("minversion", "0.0.0"))
+        maxv_raw = d.get("maxversion")
+        maxv = _parse(maxv_raw) if maxv_raw else (99, 99, 99)
+        if minv <= target <= maxv:
+            info_el = d.find("info")
+            data_el = d.find("datadir")
+            if info_el is not None and data_el is not None:
+                out.append((info_el.text or "", data_el.text or ""))
+    # Some repos (slyguy) use a flat <info>/<datadir> directly under
+    # <extension>, no <dir> wrapper. Fall back to those.
+    if not out:
+        info_el = repo_addon_xml.find(".//extension/info")
+        data_el = repo_addon_xml.find(".//extension/datadir")
+        if info_el is not None and data_el is not None:
+            out.append((info_el.text or "", data_el.text or ""))
+    return out
+
+
+def _harvest_repo_addons_xml(info_url: str) -> Dict[str, str]:
+    """Fetch and parse a repo's addons.xml. Returns {addon_id: version}."""
+    try:
+        body = http_get(info_url, timeout=60)
+        root = ET.fromstring(body)
+    except Exception as exc:
+        warn(f"  could not fetch {info_url}: {exc}")
+        return {}
+    return {a.get("id"): a.get("version") for a in root.findall("addon")
+            if a.get("id") and a.get("version")}
+
+
+def _zip_url(datadir: str, aid: str, ver: str) -> str:
+    """Build the canonical zip URL from a repo's datadir.
+    Kodi convention: <datadir>/<addon_id>/<addon_id>-<version>.zip."""
+    base = datadir if datadir.endswith("/") else datadir + "/"
+    return f"{base}{aid}/{aid}-{ver}.zip"
+
+
+def _install_addon_zip(aid: str, ver: str, url: str) -> bool:
+    """Download and extract a single addon zip into KODI_ADDONS."""
+    try:
+        data = http_get(url, timeout=180)
+    except Exception as exc:
+        warn(f"  {aid} v{ver}: download failed ({exc})")
+        return False
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            zf.extractall(KODI_ADDONS)
+    except zipfile.BadZipFile:
+        warn(f"  {aid} v{ver}: not a valid zip")
+        return False
+    ok(f"  installed {aid} v{ver}")
+    return True
+
+
+def _resolve_and_install(plugin_id: str,
+                         catalogs: List[Tuple[Dict[str, str], str]],
+                         kodi_mirror_versions: Dict[str, str],
+                         visited: Optional[set] = None) -> List[str]:
+    """Install plugin_id and walk its requires graph.
+
+    catalogs is an ordered list of (id->version, datadir) tuples to search
+    for each dep. Falls back to mirrors.kodi.tv if not found in any catalog.
+    Returns a list of failures (empty == success)."""
+    if visited is None:
+        visited = set()
+    failures: List[str] = []
+    if plugin_id in visited:
+        return failures
+    visited.add(plugin_id)
+    if plugin_id.startswith("xbmc.") or plugin_id in DEBIAN_PROVIDED:
+        return failures
+    addon_dir = os.path.join(KODI_ADDONS, plugin_id)
+    if os.path.isdir(addon_dir):
+        ok(f"  {plugin_id}: already installed")
+    else:
+        # Find a catalog that has it.
+        found = False
+        for vers, datadir in catalogs:
+            if plugin_id in vers:
+                ver = vers[plugin_id]
+                if _install_addon_zip(plugin_id, ver,
+                                      _zip_url(datadir, plugin_id, ver)):
+                    found = True
+                break
+        if not found and plugin_id in kodi_mirror_versions:
+            ver = kodi_mirror_versions[plugin_id]
+            url = f"{KODI_MIRROR}/{plugin_id}/{plugin_id}-{ver}.zip"
+            found = _install_addon_zip(plugin_id, ver, url)
+        if not found:
+            warn(f"  {plugin_id}: not in any known catalog -- "
+                 "leaving for the user to install by hand")
+            failures.append(plugin_id)
+            return failures
+
+    # Recurse into requires.
+    addon_xml = os.path.join(KODI_ADDONS, plugin_id, "addon.xml")
+    if not os.path.isfile(addon_xml):
+        return failures
+    try:
+        root = ET.parse(addon_xml).getroot()
+    except ET.ParseError:
+        return failures
+    for imp in root.findall(".//requires/import"):
+        dep = imp.get("addon")
+        if not dep:
+            continue
+        if imp.get("optional", "false").lower() == "true":
+            # Skip optional deps -- many "optional" deps in scraper addons
+            # are alternate URL resolvers we don't need.
+            continue
+        failures.extend(_resolve_and_install(
+            dep, catalogs, kodi_mirror_versions, visited))
+    return failures
+
+
+def step_grey_addons(state: Dict[str, Any]) -> bool:
+    """Install the grey-area scraper stack (Umbrella, The Crew, Seren, POV,
+    CocoScrapers, ResolveURL) automatically. This is what makes Real-Debrid
+    actually useful inside Kodi -- without these, the in-Kodi browser is
+    limited to whatever the official mirror serves."""
+    header("Step 7 / 12  ·  Grey-area scrapers (Umbrella / Crew / Seren / POV)")
+
+    major_tag = _kodi_major_tag()
+    info(f"Kodi major: {major_tag}")
+
+    # Pull Kodi-mirror catalog once for dep fallback.
+    info("Fetching Kodi mirror catalog for dep resolution...")
+    try:
+        body = http_get(f"{KODI_MIRROR}/addons.xml.gz", timeout=60)
+        mirror_root = ET.fromstring(body)
+        mirror_versions = {a.get("id"): a.get("version")
+                           for a in mirror_root.findall("addon")
+                           if a.get("id") and a.get("version")}
+        info(f"  mirror has {len(mirror_versions)} addons")
+    except Exception as exc:
+        warn(f"  could not fetch mirror catalog: {exc} -- deps may fail")
+        mirror_versions = {}
+
+    # Resolve each grey repo's addons.xml + datadir, harvest the catalog.
+    catalogs: List[Tuple[Dict[str, str], str]] = []
+    for repo in GREY_REPOS:
+        name = repo["name"]
+        section(f"Repo: {name}")
+
+        info_url: Optional[str]
+        datadir: Optional[str]
+
+        if repo.get("repo_zip_url"):
+            # Wrapper zip pattern: download, extract, parse inner addon.xml.
+            try:
+                info(f"  downloading wrapper zip: {repo['repo_zip_url']}")
+                data = http_get(repo["repo_zip_url"], timeout=60)
+                with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                    zf.extractall(KODI_ADDONS)
+                    # Find the extracted repository.<x> dir.
+                    repo_dir_name = zf.namelist()[0].split("/")[0]
+            except Exception as exc:
+                warn(f"  {name}: wrapper download failed: {exc}")
+                continue
+            wrapper_xml = os.path.join(KODI_ADDONS, repo_dir_name, "addon.xml")
+            if not os.path.isfile(wrapper_xml):
+                warn(f"  {name}: wrapper has no addon.xml at {wrapper_xml}")
+                continue
+            try:
+                wrapper = ET.parse(wrapper_xml).getroot()
+            except ET.ParseError as exc:
+                warn(f"  {name}: bad wrapper addon.xml: {exc}")
+                continue
+            mirrors = _all_dir_blocks(wrapper, major_tag)
+            if not mirrors:
+                warn(f"  {name}: no <dir> block matched Kodi {major_tag}")
+                continue
+            ok(f"  wrapper installed; trying {len(mirrors)} mirror(s)")
+        else:
+            # Direct addons.xml mode -- no wrapper. Used for ResolveURL via
+            # Gujal00/smrzips (no Kodi-repository addon, just the catalog).
+            mirrors = [(repo["addons_xml"].get(major_tag)
+                        or repo["addons_xml"].get("nexus"),
+                        repo["datadir"])]
+
+        # Try every mirror -- merge all reachable catalogs so a plugin
+        # missing from the first URL can still be found via a fallback.
+        for info_url, datadir in mirrors:
+            vers = _harvest_repo_addons_xml(info_url)
+            if vers:
+                info(f"    +{len(vers)} addons from {info_url}")
+                catalogs.append((vers, datadir))
+        if not any(info_url for info_url, _ in mirrors):
+            warn(f"  {name}: no mirror produced a usable catalog")
+
+    # Install the named plugins from each repo, sharing all harvested
+    # catalogs for cross-repo dep resolution.
+    overall_failures: List[str] = []
+    visited: set = set()
+    for repo in GREY_REPOS:
+        for plugin_id in repo["plugins"]:
+            section(f"Installing {plugin_id}")
+            failures = _resolve_and_install(
+                plugin_id, catalogs, mirror_versions, visited)
+            overall_failures.extend(failures)
+
+    if overall_failures:
+        warn(f"unresolved addons: {', '.join(sorted(set(overall_failures)))}")
+        warn("re-run `./badtv repair grey_addons` if upstream comes back, "
+             "or install by hand from the in-Kodi wizard.")
+    else:
+        ok("grey-area scraper stack installed in full")
+
+    # Pre-enable everything we just dropped on disk. Kodi defaults
+    # third-party (non-official-repo) addons to disabled with
+    # disabledReason=1 ("user has not yet allowed unknown sources / this
+    # particular addon"). Pre-seeding Addons33.db with enabled=1 means
+    # the user opens Kodi and the scrapers are already live -- no
+    # twenty-clicks-into-Settings approval round.
+    to_enable = list(visited)  # all plugins + deps we just installed
+    for repo in GREY_REPOS:
+        to_enable.extend(repo["plugins"])
+    # Wrapper repos: each one's directory name often != its addon id
+    # (e.g. dir `repository.umbrellaplug.github.io` declares
+    # `id="repository.umbrella"`). Read every repo dir's addon.xml to
+    # get the canonical id Kodi will index it under.
+    for dirname in os.listdir(KODI_ADDONS):
+        if not dirname.startswith("repository."):
+            continue
+        addon_xml = os.path.join(KODI_ADDONS, dirname, "addon.xml")
+        if not os.path.isfile(addon_xml):
+            continue
+        try:
+            aid = ET.parse(addon_xml).getroot().get("id")
+        except ET.ParseError:
+            continue
+        if aid:
+            to_enable.append(aid)
+    _kodi_db_enable(sorted(set(to_enable)))
+    mark_done(state, "grey_addons", grey_failures=sorted(set(overall_failures)))
+    return True
+
+
+def _kodi_db_enable(addon_ids: List[str]) -> None:
+    """Force-enable the given addon IDs in Kodi's Addons33.db so they're
+    live on first launch instead of waiting in disabled-purgatory."""
+    if not addon_ids:
+        return
+    db = os.path.join(KODI_USERDATA, "Database", "Addons33.db")
+    os.makedirs(os.path.dirname(db), exist_ok=True)
+    if _is_kodi_running():
+        warn("Kodi is running -- can't safely patch Addons33.db. "
+             "Close Kodi and re-run `./badtv repair grey_addons`.")
+        return
+    try:
+        import sqlite3
+    except ImportError:
+        warn("Python sqlite3 unavailable; can't pre-enable addons")
+        return
+    info(f"  pre-enabling {len(addon_ids)} addons in Kodi DB ...")
+    con = sqlite3.connect(db)
+    try:
+        cur = con.cursor()
+        # Ensure schema exists (fresh-install case: Kodi hasn't been launched yet).
+        cur.execute("""CREATE TABLE IF NOT EXISTS installed (
+            id INTEGER PRIMARY KEY,
+            addonID TEXT UNIQUE,
+            enabled BOOLEAN,
+            installDate TEXT,
+            lastUpdated TEXT,
+            lastUsed TEXT,
+            origin TEXT NOT NULL DEFAULT '',
+            disabledReason INTEGER NOT NULL DEFAULT 0)""")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for aid in addon_ids:
+            cur.execute("""INSERT INTO installed
+                (addonID, enabled, installDate, lastUpdated, origin, disabledReason)
+                VALUES (?, 1, ?, ?, '', 0)
+                ON CONFLICT(addonID) DO UPDATE SET
+                    enabled=1, disabledReason=0,
+                    lastUpdated=excluded.lastUpdated""",
+                (aid, now, now))
+        con.commit()
+        ok(f"  enabled {len(addon_ids)} addons in Addons33.db")
+    finally:
+        con.close()
+
+
 def step_pvr(state: Dict[str, Any]) -> bool:
-    header("Step 7 / 11  ·  PVR IPTV Simple Client")
+    header("Step 8 / 12  ·  PVR IPTV Simple Client")
     pvr_dir = os.path.join(KODI_USERDATA, "addon_data", "pvr.iptvsimple")
     os.makedirs(pvr_dir, exist_ok=True)
     path = os.path.join(pvr_dir, "settings.xml")
@@ -767,31 +1179,56 @@ def step_pvr(state: Dict[str, Any]) -> bool:
     info(f"M3U: {m3u}")
     info(f"EPG: {epg}")
 
-    if os.path.isfile(path):
-        tree = ET.parse(path); root = tree.getroot()
-    else:
-        root = ET.Element("settings", version="2"); tree = ET.ElementTree(root)
-
     desired = {
         "m3uPathType": "1", "m3uUrl": m3u, "m3uCache": "true",
         "epgPathType": "1", "epgUrl": epg, "epgCache": "true",
         "startNum": "1", "logoPathType": "1", "catchupEnabled": "true",
     }
-    existing = {s.get("id"): s for s in root.findall("setting")}
+    # Earlier versions of this step parsed the existing settings.xml and
+    # appended new <setting> nodes, which combined with Kodi rewriting the
+    # file on shutdown produced duplicate keys (every id present twice).
+    # Always rebuild fresh from `desired`; that's the entire intended state.
+    root = ET.Element("settings", version="2")
     for k, v in desired.items():
-        # Element-with-no-children is falsy in Python -- use `is None`.
-        elem = existing.get(k)
-        if elem is None:
-            elem = ET.SubElement(root, "setting", id=k)
-        elem.text = v
-    tree.write(path, encoding="UTF-8", xml_declaration=True)
+        ET.SubElement(root, "setting", id=k).text = v
+    ET.ElementTree(root).write(path, encoding="UTF-8", xml_declaration=True)
     ok(f"wrote {path}")
+
+    # Also enable the PVR manager in guisettings so the addon actually starts
+    # populating channels on next launch instead of waiting for the user to
+    # toggle TV > Channels > Enabled by hand.
+    _patch_pvr_enabled(KODI_USERDATA)
     mark_done(state, "pvr")
     return True
 
 
+def _patch_pvr_enabled(userdata: str) -> None:
+    """Ensure guisettings has pvrmanager.enabled = true so PVR populates
+    channels on the next Kodi launch automatically."""
+    path = os.path.join(userdata, "guisettings.xml")
+    if os.path.isfile(path):
+        try:
+            tree = ET.parse(path); root = tree.getroot()
+        except ET.ParseError:
+            return
+    else:
+        root = ET.Element("settings", version="2"); tree = ET.ElementTree(root)
+    existing = {s.get("id"): s for s in root.findall("setting")}
+    desired = {"pvrmanager.enabled": "true",
+               "pvrmanager.startgroupchannelnumbersfromone": "true",
+               "epg.daystodisplay": "3"}
+    for k, v in desired.items():
+        elem = existing.get(k)
+        if elem is None:
+            elem = ET.SubElement(root, "setting", id=k)
+        elem.text = v
+        if "default" in elem.attrib:
+            del elem.attrib["default"]
+    tree.write(path, encoding="UTF-8", xml_declaration=True)
+
+
 def step_skin(state: Dict[str, Any]) -> bool:
-    header("Step 8 / 11  ·  B@Dtv theme on Arctic Zephyr MOD")
+    header("Step 9 / 12  ·  B@Dtv theme on Arctic Zephyr MOD")
     skin_dir = os.path.join(KODI_ADDONS, SKIN_ID)
     if not os.path.isdir(skin_dir):
         warn(f"{SKIN_ID} not installed -- skipping theme apply.")
@@ -874,7 +1311,7 @@ def _patch_guisettings(userdata: str) -> bool:
 
 
 def step_realdebrid(state: Dict[str, Any]) -> bool:
-    header("Step 9 / 11  ·  Real-Debrid (optional)")
+    header("Step 10 / 12  ·  Real-Debrid (optional)")
     if not confirm("Authorize Real-Debrid now? (skip if no account)", default=True):
         info("skipped Real-Debrid")
         mark_done(state, "realdebrid", realdebrid="skipped")
@@ -938,22 +1375,67 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
 
 
 def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str) -> None:
-    """Drop the RD credentials into script.module.resolveurl's settings.xml
-    so URLResolver (and every addon that uses it) wakes up authorized."""
-    rd_dir = os.path.join(KODI_USERDATA, "addon_data", "script.module.resolveurl")
-    os.makedirs(rd_dir, exist_ok=True)
-    path = os.path.join(rd_dir, "settings.xml")
-    if os.path.isfile(path):
-        tree = ET.parse(path); root = tree.getroot()
-    else:
-        root = ET.Element("settings", version="2"); tree = ET.ElementTree(root)
-    desired = {
+    """Drop the RD credentials into every addon that uses RD natively.
+
+    Each scraper has its own RD setting schema. Writing them all in one
+    pass means the user can launch Kodi and start browsing without
+    re-authorizing inside Umbrella / The Crew / Seren / POV settings."""
+    access  = token.get("access_token", "")
+    refresh = token.get("refresh_token", "")
+    expires = str(int(time.time()) + int(token.get("expires_in", 0)))
+
+    # ResolveURL: lowest common denominator -- many addons resolve through
+    # it instead of doing their own RD. Used by The Crew, Exodus, Venom etc.
+    _patch_addon_settings("script.module.resolveurl", {
         "RealDebridResolver_login": "1",
         "RealDebridResolver_client_id": client_id,
         "RealDebridResolver_client_secret": client_secret,
-        "RealDebridResolver_token": token.get("access_token", ""),
-        "RealDebridResolver_refresh": token.get("refresh_token", ""),
-    }
+        "RealDebridResolver_token": access,
+        "RealDebridResolver_refresh": refresh,
+    })
+    # Umbrella: native RD integration with its own key scheme.
+    _patch_addon_settings("plugin.video.umbrella", {
+        "realdebrid.token": access,
+        "realdebrid.refresh": refresh,
+        "realdebrid.client_id": client_id,
+        "realdebrid.client_secret": client_secret,
+        "realdebrid.expires": expires,
+        "rd.authed": "true",
+        "debrid_priority1": "0",  # RD first
+    })
+    # Seren follows roughly the same scheme as Umbrella.
+    _patch_addon_settings("plugin.video.seren", {
+        "rd.auth": access,
+        "rd.refresh": refresh,
+        "rd.client_id": client_id,
+        "rd.secret": client_secret,
+        "rd.expiry": expires,
+        "general.debridPriority": "0",
+    })
+    # POV uses a `realdebrid_` prefix.
+    _patch_addon_settings("plugin.video.pov", {
+        "realdebrid_token": access,
+        "realdebrid_refresh": refresh,
+        "realdebrid_client_id": client_id,
+        "realdebrid_secret": client_secret,
+        "realdebrid_expires": expires,
+    })
+
+
+def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
+    """Idempotently merge `desired` into <addon_id>'s settings.xml. Safe
+    to call even if the addon isn't installed yet -- we just create the
+    file under addon_data so the addon picks it up on first launch."""
+    d = os.path.join(KODI_USERDATA, "addon_data", addon_id)
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, "settings.xml")
+    if os.path.isfile(path):
+        try:
+            tree = ET.parse(path); root = tree.getroot()
+        except ET.ParseError:
+            root = ET.Element("settings", version="2"); tree = ET.ElementTree(root)
+    else:
+        root = ET.Element("settings", version="2"); tree = ET.ElementTree(root)
     existing = {s.get("id"): s for s in root.findall("setting")}
     for k, v in desired.items():
         e = existing.get(k)
@@ -964,7 +1446,7 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
 
 
 def step_trakt(state: Dict[str, Any]) -> bool:
-    header("Step 10 / 11  ·  Trakt")
+    header("Step 11 / 12  ·  Trakt")
     info("Trakt sync requires a registered Trakt OAuth app, which B@Dtv")
     info("doesn't ship one of (would require us to host client credentials).")
     info("")
@@ -1023,7 +1505,7 @@ def step_trakt(state: Dict[str, Any]) -> bool:
 
 
 def step_stream_test(state: Dict[str, Any]) -> bool:
-    header("Step 11 / 11  ·  Stream test (mpv)")
+    header("Step 12 / 12  ·  Stream test (mpv)")
     if not shutil.which("mpv"):
         warn("mpv not installed; skipping stream test")
         mark_done(state, "stream_test", stream_test="skipped_no_mpv")
@@ -1131,6 +1613,7 @@ STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
     ("vpn",                 step_vpn),
     ("badtv_addons",        step_install_repo_addon),
     ("install_official",    step_install_official),
+    ("grey_addons",         step_grey_addons),
     ("pvr",                 step_pvr),
     ("skin",                step_skin),
     ("realdebrid",          step_realdebrid),
