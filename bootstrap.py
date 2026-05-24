@@ -1387,7 +1387,9 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
     # ResolveURL: lowest common denominator -- many addons resolve through
     # it instead of doing their own RD. Used by The Crew, Exodus, Venom etc.
     _patch_addon_settings("script.module.resolveurl", {
-        "RealDebridResolver_login": "1",
+        # ResolveURL declares login as type="bool" -- the addon rejects
+        # "1"/"0" with a "failed to load value" warning at startup.
+        "RealDebridResolver_login": "true",
         "RealDebridResolver_client_id": client_id,
         "RealDebridResolver_client_secret": client_secret,
         "RealDebridResolver_token": access,
