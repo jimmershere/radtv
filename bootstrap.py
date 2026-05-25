@@ -1775,14 +1775,94 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - ./rdt-client/data:/data/db
       - /datapool/media/downloads:/data/downloads
     ports: ["6500:6500"]
+
+  # qBittorrent + Gluetun (VPN sidecar). Used as a SECONDARY download
+  # client for titles RD's DMCA filter rejects (NBC, HBO, Disney etc.).
+  # Gluetun stays "Restarting" until the user fills in VPN creds in .env
+  # -- that's expected. qBittorrent uses gluetun's network namespace so
+  # all traffic flows through the VPN tunnel + dies if the tunnel does.
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: badtv-gluetun
+    restart: unless-stopped
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun]
+    environment:
+      - VPN_SERVICE_PROVIDER=${{VPN_SERVICE_PROVIDER:-mullvad}}
+      - VPN_TYPE=${{VPN_TYPE:-wireguard}}
+      - WIREGUARD_PRIVATE_KEY=${{WIREGUARD_PRIVATE_KEY:-}}
+      - WIREGUARD_ADDRESSES=${{WIREGUARD_ADDRESSES:-}}
+      - OPENVPN_USER=${{OPENVPN_USER:-}}
+      - OPENVPN_PASSWORD=${{OPENVPN_PASSWORD:-}}
+      - SERVER_COUNTRIES=${{SERVER_COUNTRIES:-USA}}
+      - SERVER_CITIES=${{SERVER_CITIES:-}}
+      - TZ=America/New_York
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
+    ports:
+      - "8091:8091"   # qBittorrent web UI is exposed THROUGH gluetun
+    volumes: [./gluetun:/gluetun]
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: badtv-qbittorrent
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on: [gluetun]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - WEBUI_PORT=8091
+    volumes:
+      - ./qbittorrent:/config
+      - /datapool/media/qbit-downloads:/downloads
+"""
+
+    env_template = """# Gluetun VPN credentials. Until these are filled, the gluetun
+# container will restart-loop and qBittorrent will have no network.
+# Edit this file in place, then: `cd /datapool/preserved/badtv-arr && docker compose up -d gluetun qbittorrent`
+
+# Recommended: Mullvad ($5/mo flat, WireGuard, sign up anonymously with cash).
+# Pull these two values from https://mullvad.net/account/wireguard-config
+VPN_SERVICE_PROVIDER=mullvad
+VPN_TYPE=wireguard
+WIREGUARD_PRIVATE_KEY=
+WIREGUARD_ADDRESSES=
+
+# Server preferences (optional). For US-locked content prefer USA.
+SERVER_COUNTRIES=USA
+SERVER_CITIES=
+
+# Alternative providers — uncomment ONE section instead of Mullvad above:
+#
+# ProtonVPN (WireGuard):
+# VPN_SERVICE_PROVIDER=protonvpn
+# VPN_TYPE=wireguard
+# WIREGUARD_PRIVATE_KEY=
+# WIREGUARD_ADDRESSES=
+#
+# ExpressVPN (OpenVPN — must be extracted from their manual setup page):
+# VPN_SERVICE_PROVIDER=expressvpn
+# VPN_TYPE=openvpn
+# OPENVPN_USER=
+# OPENVPN_PASSWORD=
+
+# qBittorrent web-UI admin password (login as 'admin' with this):
+QBITTORRENT_PASSWORD=B@Dtv2026!
 """
 
     setup_cmd = f"""
 set -e
 STACK=/datapool/preserved/badtv-arr
 sudo mkdir -p $STACK/prowlarr $STACK/flaresolverr $STACK/sonarr $STACK/radarr \\
-              $STACK/rdt-client/data
-sudo chown -R floor2:floor2 $STACK
+              $STACK/rdt-client/data $STACK/gluetun $STACK/qbittorrent \\
+              /datapool/media/qbit-downloads
+sudo chown -R floor2:floor2 $STACK /datapool/media/qbit-downloads
+if [ ! -f $STACK/.env ]; then
+  cat > $STACK/.env <<'ENV'
+{env_template}
+ENV
+fi
 cat > $STACK/docker-compose.yml <<'COMPOSE'
 {compose_yml}
 COMPOSE
