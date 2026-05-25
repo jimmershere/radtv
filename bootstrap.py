@@ -1726,37 +1726,62 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
         warn("install Docker on floor2 then `./badtv repair prowlarr`")
         return True
 
-    info("deploying docker-compose stack at /datapool/preserved/badtv-arr/")
+    info("deploying full arr+rdt stack at /datapool/preserved/badtv-arr/")
     compose_yml = """services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: badtv-prowlarr
     restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
-    volumes:
-      - ./prowlarr:/config
-    ports:
-      - "9696:9696"
-    depends_on:
-      - flaresolverr
+    environment: [PUID=1000, PGID=1000, TZ=America/New_York]
+    volumes: [./prowlarr:/config]
+    ports: ["9696:9696"]
+    depends_on: [flaresolverr]
 
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: badtv-flaresolverr
     restart: unless-stopped
-    environment:
-      - LOG_LEVEL=info
-      - TZ=America/New_York
-    ports:
-      - "8191:8191"
+    environment: [LOG_LEVEL=info, TZ=America/New_York]
+    ports: ["8191:8191"]
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: badtv-sonarr
+    restart: unless-stopped
+    environment: [PUID=1000, PGID=1000, TZ=America/New_York]
+    volumes:
+      - ./sonarr:/config
+      - /datapool/media:/media
+    ports: ["8989:8989"]
+    depends_on: [prowlarr]
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: badtv-radarr
+    restart: unless-stopped
+    environment: [PUID=1000, PGID=1000, TZ=America/New_York]
+    volumes:
+      - ./radarr:/config
+      - /datapool/media:/media
+    ports: ["7878:7878"]
+    depends_on: [prowlarr]
+
+  rdt-client:
+    image: rogerfar/rdtclient:latest
+    container_name: badtv-rdtclient
+    restart: unless-stopped
+    environment: [PUID=1000, PGID=1000, TZ=America/New_York]
+    volumes:
+      - ./rdt-client/data:/data/db
+      - /datapool/media/downloads:/data/downloads
+    ports: ["6500:6500"]
 """
+
     setup_cmd = f"""
 set -e
 STACK=/datapool/preserved/badtv-arr
-sudo mkdir -p $STACK/prowlarr $STACK/flaresolverr
+sudo mkdir -p $STACK/prowlarr $STACK/flaresolverr $STACK/sonarr $STACK/radarr \\
+              $STACK/rdt-client/data
 sudo chown -R floor2:floor2 $STACK
 cat > $STACK/docker-compose.yml <<'COMPOSE'
 {compose_yml}
@@ -1848,12 +1873,205 @@ docker compose up -d
         })
         ok("Jacktook wired to Prowlarr")
 
+    # === Sonarr + Radarr + rdt-client wire-up ===========================
+    # Pull each app's auto-generated API key from its config.xml.
+    sona_key, rada_key = "", ""
+    for app, kvar in (("sonarr", "sona_key"), ("radarr", "rada_key")):
+        for _ in range(30):
+            time.sleep(2)
+            cp = subprocess.run(
+                ["ssh", f"{floor2_user}@{floor2_host}",
+                 f"sudo cat /datapool/preserved/badtv-arr/{app}/config.xml "
+                 "2>/dev/null | grep -oP '(?<=<ApiKey>)[^<]+'"],
+                capture_output=True, text=True, timeout=15)
+            k = cp.stdout.strip()
+            if k:
+                if app == "sonarr":  sona_key = k
+                else:                rada_key = k
+                break
+    if sona_key:
+        ok(f"Sonarr API key: {sona_key[:8]}...")
+    if rada_key:
+        ok(f"Radarr API key: {rada_key[:8]}...")
+
+    sonarr_url = f"http://{floor2_host}:8989"
+    radarr_url = f"http://{floor2_host}:7878"
+
+    # Tell Sonarr where to store TV + Radarr where to store movies
+    if sona_key:
+        _arr_api(sonarr_url, sona_key, "POST", "/api/v3/rootfolder",
+                 payload={"path": "/media/tv"}, ignore_dupe=True)
+        ok("Sonarr root folder: /media/tv")
+    if rada_key:
+        _arr_api(radarr_url, rada_key, "POST", "/api/v3/rootfolder",
+                 payload={"path": "/media/movies"}, ignore_dupe=True)
+        ok("Radarr root folder: /media/movies")
+
+    # Register Sonarr + Radarr in Prowlarr so it auto-pushes indexers
+    app_schemas = _prowlarr_api(prowlarr_url, apikey, "GET",
+                                "/api/v1/applications/schema") or []
+    existing_apps = _prowlarr_api(prowlarr_url, apikey, "GET",
+                                   "/api/v1/applications") or []
+    existing_app_names = {a.get("name") for a in existing_apps}
+
+    def _make_app(impl, name, base_url, api_key, categories):
+        sch = next((s for s in app_schemas if s.get("implementation") == impl), None)
+        if not sch:
+            return None
+        fields = sch.get("fields", [])
+        values = {"baseUrl": base_url, "apiKey": api_key,
+                  "prowlarrUrl": f"http://badtv-prowlarr:9696",
+                  "syncCategories": categories}
+        for f in fields:
+            if f.get("name") in values:
+                f["value"] = values[f["name"]]
+        return {**sch, "name": name, "syncLevel": "fullSync",
+                "tags": [], "fields": fields}
+
+    for app_name, app_payload in (
+        ("Sonarr", _make_app("Sonarr", "Sonarr",
+                              "http://badtv-sonarr:8989", sona_key,
+                              [5000, 5010, 5020, 5030, 5040, 5045, 5050, 5060,
+                               5070, 5080])),
+        ("Radarr", _make_app("Radarr", "Radarr",
+                              "http://badtv-radarr:7878", rada_key,
+                              [2000, 2010, 2020, 2030, 2040, 2045, 2050, 2060,
+                               2070, 2080])),
+    ):
+        if not app_payload:
+            continue
+        if app_name in existing_app_names:
+            ok(f"  Prowlarr → {app_name}: already linked")
+            continue
+        res = _prowlarr_api(prowlarr_url, apikey, "POST",
+                            "/api/v1/applications", payload=app_payload,
+                            ignore_dupe=True)
+        if res:
+            ok(f"  Prowlarr → {app_name}: linked (indexers will auto-sync)")
+
+    # Configure rdt-client (admin user + RD API key + download paths)
+    rdt_user, rdt_pass = "jimmer", "B@Dtv2026!"  # TODO: random + persist
+    rdt_url = f"http://{floor2_host}:6500"
+    info("configuring rdt-client...")
+    rdt_jar = "/tmp/rdtcookies.txt"
+    # First create the admin (idempotent — 400 on dupe is fine)
+    subprocess.run(
+        ["ssh", f"{floor2_user}@{floor2_host}",
+         "curl -sS -X POST http://127.0.0.1:6500/Api/Authentication/Create "
+         "-H 'Content-Type: application/json' "
+         f"-d '{{\"userName\":\"{rdt_user}\",\"password\":\"{rdt_pass}\"}}'"],
+        capture_output=True, text=True, timeout=10)
+    # Login
+    run_ok(["ssh", f"{floor2_user}@{floor2_host}",
+            f"rm -f {rdt_jar}; curl -sS --cookie-jar {rdt_jar} -X POST "
+            "http://127.0.0.1:6500/Api/Authentication/Login "
+            "-H 'Content-Type: application/json' "
+            f"-d '{{\"userName\":\"{rdt_user}\",\"password\":\"{rdt_pass}\"}}' "
+            ">/dev/null"])
+    # Provider=1 (RealDebrid), token, paths
+    rdt_settings = [
+        {"key": "Provider:Provider", "value": 1},
+        {"key": "Provider:ApiKey", "value": state.get("vars", {}).get("rd_access_token", "")},
+        {"key": "Provider:AutoImport", "value": True},
+        {"key": "Provider:AutoDelete", "value": False},
+        {"key": "DownloadClient:Client", "value": 0},
+        {"key": "DownloadClient:DownloadPath", "value": "/data/downloads"},
+        {"key": "DownloadClient:MappedPath", "value": "/datapool/media/downloads"},
+    ]
+    # Take RD token from ResolveURL's settings.xml if state doesn't have it
+    if not state.get("vars", {}).get("rd_access_token"):
+        ru = os.path.join(KODI_USERDATA, "addon_data",
+                          "script.module.resolveurl", "settings.xml")
+        if os.path.isfile(ru):
+            try:
+                root = ET.parse(ru).getroot()
+                for s in root.findall("setting"):
+                    if s.get("id") == "RealDebridResolver_token":
+                        rdt_settings[1]["value"] = (s.text or "")
+            except Exception:
+                pass
+    run_ok(["ssh", f"{floor2_user}@{floor2_host}",
+            f"curl -sS --cookie {rdt_jar} -X PUT "
+            "http://127.0.0.1:6500/Api/Settings "
+            "-H 'Content-Type: application/json' "
+            f"-d '{json.dumps(rdt_settings)}'"])
+    ok("rdt-client: Real-Debrid provider configured")
+
+    # Register rdt-client as a qBittorrent-compatible download client
+    # in BOTH Sonarr and Radarr.
+    def _make_qbt(name, category):
+        return {
+            "enable": True, "protocol": "torrent", "priority": 1,
+            "removeCompletedDownloads": True, "removeFailedDownloads": True,
+            "name": name, "tags": [],
+            "implementationName": "qBittorrent",
+            "implementation":     "QBittorrent",
+            "configContract":     "QBittorrentSettings",
+            "fields": [
+                {"name": "host", "value": "badtv-rdtclient"},
+                {"name": "port", "value": 6500},
+                {"name": "useSsl", "value": False},
+                {"name": "urlBase", "value": ""},
+                {"name": "username", "value": rdt_user},
+                {"name": "password", "value": rdt_pass},
+                {"name": "category", "value": category},
+                {"name": "recentTvPriority", "value": 0},
+                {"name": "olderTvPriority", "value": 0},
+                {"name": "moviePriority", "value": 0},
+                {"name": "initialState", "value": 0},
+                {"name": "sequentialOrder", "value": False},
+                {"name": "firstAndLast", "value": False},
+            ],
+        }
+    for app_url, app_key, label, category in (
+        (sonarr_url, sona_key, "Sonarr", "tv-sonarr"),
+        (radarr_url, rada_key, "Radarr", "movies-radarr"),
+    ):
+        if not app_key:
+            continue
+        existing_dc = _arr_api(app_url, app_key, "GET",
+                               "/api/v3/downloadclient") or []
+        if any(d.get("name") == "rdt-client" for d in existing_dc):
+            ok(f"  {label}: rdt-client already registered")
+            continue
+        res = _arr_api(app_url, app_key, "POST", "/api/v3/downloadclient",
+                       payload=_make_qbt("rdt-client", category),
+                       ignore_dupe=True)
+        if res:
+            ok(f"  {label}: rdt-client registered")
+
     mark_done(state, "prowlarr",
               prowlarr_host=floor2_host,
               prowlarr_port=9696,
               prowlarr_apikey=apikey,
-              prowlarr_indexers=len(existing) + added)
+              prowlarr_indexers=len(existing) + added,
+              sonarr_apikey=sona_key,
+              radarr_apikey=rada_key,
+              rdt_user=rdt_user)
     return True
+
+
+def _arr_api(base_url: str, apikey: str, method: str, path: str,
+              payload: Optional[Dict[str, Any]] = None,
+              ignore_dupe: bool = False) -> Any:
+    """Sonarr/Radarr REST API helper (same pattern as Prowlarr's)."""
+    url = base_url + path
+    body = json.dumps(payload).encode() if payload else None
+    req = urllib.request.Request(
+        url, data=body, method=method,
+        headers={"X-Api-Key": apikey, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read().decode()
+            return json.loads(data) if data else None
+    except urllib.error.HTTPError as exc:
+        if exc.code == 400 and ignore_dupe:
+            return None
+        warn(f"  arr API {method} {path}: HTTP {exc.code}")
+        return None
+    except Exception as exc:
+        warn(f"  arr API {method} {path}: {exc}")
+        return None
 
 
 def _prowlarr_api(base_url: str, apikey: str, method: str, path: str,
