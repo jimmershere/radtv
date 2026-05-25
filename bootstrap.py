@@ -1601,6 +1601,90 @@ def _patch_kodi_sources_xml(mnt: str) -> None:
 
     tree.write(path, encoding="UTF-8", xml_declaration=True)
 
+    # Pre-assign content scrapers to each path in MyVideos121.db so library
+    # scans pick the right scraper automatically. Otherwise the user has to
+    # right-click each source > "Set Content..." > pick scraper > OK by hand,
+    # for every source, every install. With this in place, Kodi sees on first
+    # launch: "movies/" is a Movies path scraped by TheMovieDb,
+    # "tv/" is a TV Shows path scraped by tvshows-TheMovieDb. A
+    # VideoLibrary.Scan over these paths writes posters + metadata directly.
+    _seed_library_scraper_assignments(mnt)
+
+
+# Default settings blobs for TheMovieDb scrapers -- copied from a working
+# install. The path rows reference these via path.strSettings.
+_MOVIE_SCRAPER_SETTINGS = (
+    '<settings version="2">'
+    '<setting id="tmdblanguage">en</setting>'
+    '<setting id="tmdbcertcountry">us</setting>'
+    '<setting id="keeporiginaltitle" default="true">false</setting>'
+    '<setting id="usertitle" default="true">false</setting>'
+    '<setting id="usercertprefix" default="true" />'
+    '<setting id="trailer" default="true">true</setting>'
+    '<setting id="fanart" default="true">true</setting>'
+    '<setting id="landscape" default="true">true</setting>'
+    '<setting id="rating" default="true">TMDb</setting>'
+    '</settings>'
+)
+_TV_SCRAPER_SETTINGS = (
+    '<settings version="2">'
+    '<setting id="language" default="true">en</setting>'
+    '<setting id="absolutenumber" default="true">false</setting>'
+    '<setting id="dvdorder" default="true">false</setting>'
+    '<setting id="fanart" default="true">true</setting>'
+    '<setting id="landscape" default="true">true</setting>'
+    '</settings>'
+)
+
+
+def _seed_library_scraper_assignments(mnt: str) -> None:
+    """Write path rows in MyVideos121.db for movies/, tv/, downloads/ so
+    the library scan picks the right scraper automatically. Idempotent."""
+    import sqlite3
+    db = os.path.join(KODI_USERDATA, "Database", "MyVideos121.db")
+    if not os.path.isfile(db):
+        # Kodi hasn't been launched yet — the DB is built on first launch.
+        # We'll get a second chance via the launch step + a follow-up
+        # `./badtv repair floor2` re-run.
+        info("  MyVideos121.db not present yet (Kodi hasn't run) -- skip")
+        return
+    if _is_kodi_running():
+        warn("  Kodi is running -- skip MyVideos scraper-assignment write")
+        return
+    con = sqlite3.connect(db)
+    cur = con.cursor()
+    # path schema: idPath, strPath, strContent, strScraper, strHash,
+    # scanRecursive, useFolderNames, strSettings, noUpdate, exclude,
+    # allAudio, dateAdded, idParentPath
+    paths = [
+        (os.path.join(mnt, "movies") + "/",   "movies",
+         "metadata.themoviedb.org.python",        _MOVIE_SCRAPER_SETTINGS),
+        (os.path.join(mnt, "tv") + "/",       "tvshows",
+         "metadata.tvshows.themoviedb.org.python", _TV_SCRAPER_SETTINGS),
+        (os.path.join(mnt, "downloads") + "/", "movies",
+         "metadata.themoviedb.org.python",         _MOVIE_SCRAPER_SETTINGS),
+    ]
+    for spath, content, scraper, settings in paths:
+        row = cur.execute("SELECT idPath FROM path WHERE strPath=?",
+                          (spath,)).fetchone()
+        if row:
+            cur.execute(
+                "UPDATE path SET strContent=?, strScraper=?, strSettings=?, "
+                "scanRecursive=2147483647, useFolderNames=0, noUpdate=0, "
+                "exclude=0 WHERE strPath=?",
+                (content, scraper, settings, spath))
+        else:
+            cur.execute(
+                "INSERT INTO path "
+                "(strPath, strContent, strScraper, strHash, scanRecursive, "
+                "useFolderNames, strSettings, noUpdate, exclude, allAudio, "
+                "dateAdded) VALUES (?, ?, ?, '', 2147483647, 0, ?, 0, 0, 0, "
+                "datetime('now'))",
+                (spath, content, scraper, settings))
+    con.commit()
+    con.close()
+    ok(f"  MyVideos121.db: 3 paths assigned to TheMovieDb scraper")
+
 
 def step_prowlarr(state: Dict[str, Any]) -> bool:
     """Deploy Prowlarr + FlareSolverr as Docker containers on floor2,
