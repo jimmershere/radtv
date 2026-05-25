@@ -440,7 +440,7 @@ def sudo_keepalive_loop_start() -> subprocess.Popen:
 # === STEPS ==================================================================
 
 def step_disclaimer(state: Dict[str, Any]) -> bool:
-    header("Step 1 / 14  ·  Legal disclaimer")
+    header("Step 1 / 15  ·  Legal disclaimer")
     if is_done(state, "disclaimer"):
         ok("already accepted on a prior run")
         return True
@@ -456,7 +456,7 @@ def step_disclaimer(state: Dict[str, Any]) -> bool:
 
 
 def step_apt(state: Dict[str, Any]) -> bool:
-    header("Step 2 / 14  ·  System packages (apt)")
+    header("Step 2 / 15  ·  System packages (apt)")
     if not shutil.which("apt-get"):
         warn("not on a Debian/Ubuntu box -- skipping. Install Kodi + binary "
              "addons + mpv + wireguard-tools + nftables manually for your distro.")
@@ -496,7 +496,7 @@ def step_apt(state: Dict[str, Any]) -> bool:
 
 
 def step_kodi_userdata(state: Dict[str, Any]) -> bool:
-    header("Step 3 / 14  ·  Bootstrap Kodi userdata")
+    header("Step 3 / 15  ·  Bootstrap Kodi userdata")
     os.makedirs(KODI_USERDATA, exist_ok=True)
     os.makedirs(KODI_ADDONS, exist_ok=True)
     os.makedirs(os.path.join(KODI_USERDATA, "addon_data"), exist_ok=True)
@@ -531,7 +531,7 @@ def step_kodi_userdata(state: Dict[str, Any]) -> bool:
 
 
 def step_vpn(state: Dict[str, Any]) -> bool:
-    header("Step 4 / 14  ·  VPN")
+    header("Step 4 / 15  ·  VPN")
     if is_done(state, "vpn"):
         ok("already configured on a prior run "
            f"(provider: {state.get('vars', {}).get('vpn_provider', '?')})")
@@ -705,7 +705,7 @@ def verify_exit_ip() -> None:
 
 def step_install_repo_addon(state: Dict[str, Any]) -> bool:
     """Install the B@Dtv repository addon and wizard addon from local zips."""
-    header("Step 5 / 14  ·  B@Dtv addons (repository + wizard)")
+    header("Step 5 / 15  ·  B@Dtv addons (repository + wizard)")
     # Auto-discover the current built zips so we don't have to chase
     # version-string bumps in two places.
     dist = os.path.join(REPO_ROOT, "dist")
@@ -742,7 +742,7 @@ def step_install_repo_addon(state: Dict[str, Any]) -> bool:
 
 def step_install_official(state: Dict[str, Any]) -> bool:
     """Download Kodi-official addons directly from mirrors.kodi.tv."""
-    header("Step 6 / 14  ·  Kodi-official addons")
+    header("Step 6 / 15  ·  Kodi-official addons")
 
     # If the addons already exist on disk from a prior run, the only thing
     # left to do is make sure they're enabled in Addons33.db. Skip the
@@ -1022,7 +1022,7 @@ def step_grey_addons(state: Dict[str, Any]) -> bool:
     CocoScrapers, ResolveURL) automatically. This is what makes Real-Debrid
     actually useful inside Kodi -- without these, the in-Kodi browser is
     limited to whatever the official mirror serves."""
-    header("Step 7 / 14  ·  Grey-area scrapers (Umbrella / Crew / Seren / POV)")
+    header("Step 7 / 15  ·  Grey-area scrapers (Umbrella / Crew / Seren / POV)")
 
     major_tag = _kodi_major_tag()
     info(f"Kodi major: {major_tag}")
@@ -1393,7 +1393,7 @@ def step_floor2_mount(state: Dict[str, Any]) -> bool:
       - systemd --user unit for auto-mount on login
       - immediate sshfs mount if not already mounted
       - Kodi sources.xml entries for movies / tv / downloads / music"""
-    header("Step 8 / 14  ·  floor2 NAS mount (SSHFS)")
+    header("Step 8 / 15  ·  floor2 NAS mount (SSHFS)")
 
     host    = os.environ.get("FLOOR2_HOST", FLOOR2_DEFAULT_HOST)
     user    = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
@@ -1602,6 +1602,199 @@ def _patch_kodi_sources_xml(mnt: str) -> None:
     tree.write(path, encoding="UTF-8", xml_declaration=True)
 
 
+def step_prowlarr(state: Dict[str, Any]) -> bool:
+    """Deploy Prowlarr + FlareSolverr as Docker containers on floor2,
+    then wire the resulting API endpoint into Jacktook.
+
+    Why: most public torrent indexers are unreachable from US consumer
+    networks (1337x/yts/eztv/torrentgalaxy/kickass all 403/DNS-dead),
+    and Stremio aggregators can rotate at any time. Self-hosting an
+    indexer means YOUR stack survives upstream churn -- when ElfHosted
+    blips or RD changes API, Prowlarr keeps working on its own.
+
+    Sets up:
+      * docker-compose stack at <floor2>:/datapool/preserved/badtv-arr/
+        with two containers: badtv-prowlarr (lscr.io/linuxserver/prowlarr)
+        + badtv-flaresolverr (Cloudflare bypass).
+      * Reads Prowlarr's auto-generated API key from its config.xml.
+      * Registers FlareSolverr as Prowlarr's indexer-proxy.
+      * Adds the indexers from the alive list (Knaben, LimeTorrents,
+        Nyaa.si, TorrentDownload, TorrentProject2, YTS) via Prowlarr's
+        REST API.
+      * Writes prowlarr_enabled + endpoint + key into Jacktook's
+        settings.xml so search includes Prowlarr results."""
+    header("Step 9 / 15  ·  Prowlarr indexer stack on floor2")
+
+    floor2_host = state.get("vars", {}).get("floor2_host", FLOOR2_DEFAULT_HOST)
+    floor2_user = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+
+    # Verify SSH works to floor2
+    if not run_ok(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+                   f"{floor2_user}@{floor2_host}", "true"]):
+        warn(f"can't SSH to {floor2_user}@{floor2_host} -- skipping Prowlarr")
+        warn("re-run `./badtv repair prowlarr` once floor2 is reachable")
+        return True
+
+    # Verify docker is installed on floor2
+    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}",
+                   "command -v docker"]):
+        warn("Docker not installed on floor2 -- skipping Prowlarr")
+        warn("install Docker on floor2 then `./badtv repair prowlarr`")
+        return True
+
+    info("deploying docker-compose stack at /datapool/preserved/badtv-arr/")
+    compose_yml = """services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: badtv-prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - ./prowlarr:/config
+    ports:
+      - "9696:9696"
+    depends_on:
+      - flaresolverr
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: badtv-flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/New_York
+    ports:
+      - "8191:8191"
+"""
+    setup_cmd = f"""
+set -e
+STACK=/datapool/preserved/badtv-arr
+sudo mkdir -p $STACK/prowlarr $STACK/flaresolverr
+sudo chown -R floor2:floor2 $STACK
+cat > $STACK/docker-compose.yml <<'COMPOSE'
+{compose_yml}
+COMPOSE
+cd $STACK
+docker compose up -d
+"""
+    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}", setup_cmd]):
+        err("failed to deploy compose stack")
+        return False
+    ok("docker stack up")
+
+    # Wait for Prowlarr config.xml to materialize (it generates on first start)
+    info("waiting for Prowlarr to initialize...")
+    apikey = ""
+    for _ in range(30):
+        time.sleep(2)
+        cp = subprocess.run(
+            ["ssh", f"{floor2_user}@{floor2_host}",
+             "sudo cat /datapool/preserved/badtv-arr/prowlarr/config.xml 2>/dev/null "
+             "| grep -oP '(?<=<ApiKey>)[^<]+'"],
+            capture_output=True, text=True, timeout=15)
+        apikey = cp.stdout.strip()
+        if apikey:
+            break
+    if not apikey:
+        warn("could not read Prowlarr API key; container may still be starting")
+        return True
+    ok(f"Prowlarr API key: {apikey[:8]}...")
+
+    prowlarr_url = f"http://{floor2_host}:9696"
+
+    # Register FlareSolverr as an indexer-proxy (container name resolves
+    # inside the docker network)
+    info("registering FlareSolverr in Prowlarr...")
+    fs_payload = {
+        "onTagsChanged": False,
+        "name": "flaresolverr",
+        "implementation": "FlareSolverr",
+        "implementationName": "FlareSolverr",
+        "configContract": "FlareSolverrSettings",
+        "tags": [],
+        "fields": [
+            {"name": "host", "value": "http://badtv-flaresolverr:8191/"},
+            {"name": "requestTimeout", "value": 60},
+        ],
+    }
+    _prowlarr_api(prowlarr_url, apikey, "POST", "/api/v1/indexerproxy",
+                  payload=fs_payload, ignore_dupe=True)
+
+    # Add the alive indexers
+    schemas = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/indexer/schema") or []
+    profiles = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/appprofile") or []
+    profile_id = profiles[0]["id"] if profiles else 1
+    existing = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/indexer") or []
+    existing_names = {i["name"] for i in existing}
+
+    wanted = ["Knaben", "Nyaa.si", "TorrentDownload", "TorrentProject2", "YTS"]
+    added = 0
+    for w in wanted:
+        if w in existing_names:
+            ok(f"  {w}: already configured")
+            continue
+        matches = [s for s in schemas if s.get("name") == w]
+        if not matches:
+            warn(f"  {w}: no schema available in Prowlarr")
+            continue
+        payload = {**matches[0], "name": w, "enable": True,
+                   "appProfileId": profile_id, "priority": 25}
+        res = _prowlarr_api(prowlarr_url, apikey, "POST", "/api/v1/indexer",
+                            payload=payload, ignore_dupe=True)
+        if res and "id" in res:
+            ok(f"  {w}: added")
+            added += 1
+        else:
+            warn(f"  {w}: add failed (may be upstream-flaky)")
+
+    info(f"Prowlarr now has {len(existing) + added} indexers")
+
+    # Wire into Jacktook
+    if os.path.isdir(os.path.join(KODI_ADDONS, "plugin.video.jacktook")):
+        _patch_addon_settings("plugin.video.jacktook", {
+            "prowlarr_enabled":     "true",
+            "prowlarr_host":        floor2_host,
+            "prowlarr_port":        "9696",
+            "prowlarr_apikey":      apikey,
+            "prowlarr_timeout":     "30",
+            "prowlarr_indexer_ids": "",   # empty = all enabled
+        })
+        ok("Jacktook wired to Prowlarr")
+
+    mark_done(state, "prowlarr",
+              prowlarr_host=floor2_host,
+              prowlarr_port=9696,
+              prowlarr_apikey=apikey,
+              prowlarr_indexers=len(existing) + added)
+    return True
+
+
+def _prowlarr_api(base_url: str, apikey: str, method: str, path: str,
+                   payload: Optional[Dict[str, Any]] = None,
+                   ignore_dupe: bool = False) -> Any:
+    """Tiny helper for talking to Prowlarr's REST API."""
+    url = base_url + path
+    body = json.dumps(payload).encode() if payload else None
+    req = urllib.request.Request(
+        url, data=body, method=method,
+        headers={"X-Api-Key": apikey, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read().decode()
+            return json.loads(data) if data else None
+    except urllib.error.HTTPError as exc:
+        if exc.code == 400 and ignore_dupe:
+            return None  # likely already exists
+        warn(f"  Prowlarr API {method} {path}: HTTP {exc.code}")
+        return None
+    except Exception as exc:
+        warn(f"  Prowlarr API {method} {path}: {exc}")
+        return None
+
+
 def step_elementum(state: Dict[str, Any]) -> bool:
     """Install the Elementum torrent-streaming + download stack, point its
     download dir at the floor2 mount, and enable in Kodi DB.
@@ -1612,7 +1805,7 @@ def step_elementum(state: Dict[str, Any]) -> bool:
     Direct download mode writes finished files to the configured path
     (here: <floor2-mount>/downloads/) so they're SAFE on the ZFS pool
     rather than the laptop's tiny disk."""
-    header("Step 9 / 14  ·  Elementum torrent stack")
+    header("Step 10 / 15  ·  Elementum torrent stack")
 
     arch = _elementum_arch_tag()
     if arch is None:
@@ -1910,7 +2103,7 @@ def _elementum_arch_tag() -> Optional[str]:
 
 
 def step_pvr(state: Dict[str, Any]) -> bool:
-    header("Step 10 / 14  ·  PVR IPTV Simple Client")
+    header("Step 11 / 15  ·  PVR IPTV Simple Client")
     pvr_dir = os.path.join(KODI_USERDATA, "addon_data", "pvr.iptvsimple")
     os.makedirs(pvr_dir, exist_ok=True)
     path = os.path.join(pvr_dir, "settings.xml")
@@ -1972,7 +2165,7 @@ def step_skin(state: Dict[str, Any]) -> bool:
     """Drop the B@Dtv color override into every installed skin that we
     have a matching `colors/badtv.xml` for. Do NOT force-switch the active
     skin -- let the user pick whichever skin they prefer on their display."""
-    header("Step 11 / 14  ·  B@Dtv color theme (skin-agnostic)")
+    header("Step 12 / 15  ·  B@Dtv color theme (skin-agnostic)")
 
     # Map skin_addon_id -> our override source dir name.
     skin_overrides = {
@@ -2055,7 +2248,7 @@ def _patch_guisettings(userdata: str) -> bool:
 
 
 def step_realdebrid(state: Dict[str, Any]) -> bool:
-    header("Step 12 / 14  ·  Real-Debrid (optional)")
+    header("Step 13 / 15  ·  Real-Debrid (optional)")
     if not confirm("Authorize Real-Debrid now? (skip if no account)", default=True):
         info("skipped Real-Debrid")
         mark_done(state, "realdebrid", realdebrid="skipped")
@@ -2245,7 +2438,7 @@ def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
 
 
 def step_trakt(state: Dict[str, Any]) -> bool:
-    header("Step 13 / 14  ·  Trakt")
+    header("Step 14 / 15  ·  Trakt")
     info("Trakt sync requires a registered Trakt OAuth app, which B@Dtv")
     info("doesn't ship one of (would require us to host client credentials).")
     info("")
@@ -2304,7 +2497,7 @@ def step_trakt(state: Dict[str, Any]) -> bool:
 
 
 def step_stream_test(state: Dict[str, Any]) -> bool:
-    header("Step 14 / 14  ·  Stream test (mpv)")
+    header("Step 15 / 15  ·  Stream test (mpv)")
     if not shutil.which("mpv"):
         warn("mpv not installed; skipping stream test")
         mark_done(state, "stream_test", stream_test="skipped_no_mpv")
@@ -2414,6 +2607,7 @@ STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
     ("install_official",    step_install_official),
     ("grey_addons",         step_grey_addons),
     ("floor2",              step_floor2_mount),
+    ("prowlarr",            step_prowlarr),
     ("elementum",           step_elementum),
     ("pvr",                 step_pvr),
     ("skin",                step_skin),
