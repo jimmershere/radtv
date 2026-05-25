@@ -15,7 +15,7 @@ SHELL := /bin/bash
 WIZARD_ID    := script.badtv.wizard
 WIZARD_VER   := 2.0.0
 REPO_ID      := repository.badtv
-REPO_VER     := 2.0.0
+REPO_VER     := 2.0.1
 
 DIST         := dist
 WIZARD_DIR   := build/wizard

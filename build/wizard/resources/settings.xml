@@ -3,46 +3,97 @@
   <section id="badtv">
 
     <category id="general" label="General">
-      <group id="branding" label="Branding">
-        <setting id="badtv_repo_raw_url" type="string" label="B@Dtv repo raw URL"
-                 default="https://raw.githubusercontent.com/jimmershere/badtv/main"
-                 help="Where the wizard fetches the bundled IPTV playlist + EPG from." />
+      <group id="1" label="Branding">
+        <setting id="badtv_repo_raw_url" type="string" label="B@Dtv repo raw URL" help="Where the wizard fetches the bundled IPTV playlist + EPG from.">
+          <level>0</level>
+          <default>https://raw.githubusercontent.com/jimmershere/badtv/main</default>
+          <constraints>
+            <allowempty>false</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>B@Dtv repo raw URL</heading>
+          </control>
+        </setting>
       </group>
     </category>
 
     <category id="media_server" label="Media server (floor2)">
-      <group id="floor2" label="Floor2 NAS">
-        <setting id="floor2_host" type="string" label="Host or IP"
-                 default="192.168.1.206" />
-        <setting id="floor2_share_root" type="string" label="Share root path"
-                 default="/media" />
+      <group id="1" label="Floor2 NAS">
+        <setting id="floor2_host" type="string" label="Host or IP">
+          <level>0</level>
+          <default>192.168.1.206</default>
+          <control type="edit" format="string">
+            <heading>Host or IP</heading>
+          </control>
+        </setting>
+        <setting id="floor2_share_root" type="string" label="Share root path">
+          <level>0</level>
+          <default>/media</default>
+          <control type="edit" format="string">
+            <heading>Share root path</heading>
+          </control>
+        </setting>
       </group>
     </category>
 
     <category id="iptv" label="Live TV (PVR IPTV Simple)">
-      <group id="urls" label="Playlist + EPG">
-        <setting id="iptv_m3u_url" type="string" label="M3U URL (override)"
-                 default=""
-                 help="Leave blank to use the bundled B@Dtv playlist." />
-        <setting id="iptv_epg_url" type="string" label="EPG URL (override)"
-                 default="" />
+      <group id="1" label="Playlist + EPG">
+        <setting id="iptv_m3u_url" type="string" label="M3U URL (override)" help="Leave blank to use the bundled B@Dtv playlist.">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>M3U URL (override)</heading>
+          </control>
+        </setting>
+        <setting id="iptv_epg_url" type="string" label="EPG URL (override)">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>EPG URL (override)</heading>
+          </control>
+        </setting>
       </group>
     </category>
 
     <category id="theme" label="Theme">
-      <group id="skin" label="Skin">
-        <setting id="badtv_skin_target" type="select" label="Skin to theme"
-                 default="arctic-zephyr-reloaded"
-                 values="arctic-zephyr-reloaded|estuary-mod-v2|estuary" />
+      <group id="1" label="Skin">
+        <setting id="badtv_skin_target" type="string" label="Skin to theme" help="Picks which skin's colors/ dir to drop the B@Dtv color override into. Set to 'none' to skip.">
+          <level>0</level>
+          <default>arctic-zephyr-mod</default>
+          <constraints>
+            <options>
+              <option label="Arctic Zephyr MOD">arctic-zephyr-mod</option>
+              <option label="Arctic Zephyr Reloaded">arctic-zephyr-reloaded</option>
+              <option label="Estuary MOD V2">estuary-mod-v2</option>
+              <option label="Estuary">estuary</option>
+              <option label="Skip (don't apply theme)">none</option>
+            </options>
+          </constraints>
+          <control type="list" format="string">
+            <heading>Skin to theme</heading>
+          </control>
+        </setting>
       </group>
     </category>
 
     <category id="services" label="Services">
-      <group id="auth" label="Authorization">
-        <setting id="enable_real_debrid" type="bool" label="Prompt for Real-Debrid"
-                 default="true" />
-        <setting id="enable_trakt" type="bool" label="Prompt for Trakt"
-                 default="true" />
+      <group id="1" label="Authorization">
+        <setting id="enable_real_debrid" type="boolean" label="Prompt for Real-Debrid">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="enable_trakt" type="boolean" label="Prompt for Trakt">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
       </group>
     </category>
 

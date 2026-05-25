@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="repository.badtv"
        name="B@Dtv Repository"
-       version="2.0.0"
+       version="2.0.1"
        provider-name="TheClawFirm">
   <extension point="xbmc.addon.repository" name="B@Dtv Repository">
-    <info compressed="false">https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml</info>
-    <checksum>https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml.md5</checksum>
-    <datadir zip="true">https://github.com/jimmershere/badtv/raw/main/dist/</datadir>
+    <dir minversion="19.0.0">
+      <info compressed="false">https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml</info>
+      <checksum>https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml.md5</checksum>
+      <datadir zip="true">https://github.com/jimmershere/badtv/raw/main/dist/</datadir>
+    </dir>
   </extension>
   <extension point="xbmc.addon.metadata">
     <summary lang="en_GB">B@Dtv addon repository</summary>

@@ -706,15 +706,32 @@ def verify_exit_ip() -> None:
 def step_install_repo_addon(state: Dict[str, Any]) -> bool:
     """Install the B@Dtv repository addon and wizard addon from local zips."""
     header("Step 5 / 12  ·  B@Dtv addons (repository + wizard)")
-    for name in ["repository.badtv-2.0.0.zip", "script.badtv.wizard-2.0.0.zip"]:
-        local = os.path.join(REPO_ROOT, "dist", name)
-        if not os.path.isfile(local):
-            warn(f"{name} not built locally; running `make repo`")
-            try:
-                run(["make", "-C", REPO_ROOT, "repo"], check=True)
-            except subprocess.CalledProcessError:
-                err("make repo failed")
-                return False
+    # Auto-discover the current built zips so we don't have to chase
+    # version-string bumps in two places.
+    dist = os.path.join(REPO_ROOT, "dist")
+    candidates = []
+    for prefix in ("repository.badtv-", "script.badtv.wizard-"):
+        matches = sorted(p for p in os.listdir(dist)
+                         if p.startswith(prefix) and p.endswith(".zip")) \
+                  if os.path.isdir(dist) else []
+        if matches:
+            candidates.append(matches[-1])  # newest by string sort
+    if len(candidates) < 2:
+        warn("repository / wizard zips not built locally; running `make repo`")
+        try:
+            run(["make", "-C", REPO_ROOT, "repo"], check=True)
+        except subprocess.CalledProcessError:
+            err("make repo failed")
+            return False
+        candidates = []
+        for prefix in ("repository.badtv-", "script.badtv.wizard-"):
+            matches = sorted(p for p in os.listdir(dist)
+                             if p.startswith(prefix) and p.endswith(".zip"))
+            if matches:
+                candidates.append(matches[-1])
+
+    for name in candidates:
+        local = os.path.join(dist, name)
         info(f"extracting {name} -> {KODI_ADDONS}")
         with zipfile.ZipFile(local) as zf:
             zf.extractall(KODI_ADDONS)
@@ -1119,8 +1136,76 @@ def step_grey_addons(state: Dict[str, Any]) -> bool:
         if aid:
             to_enable.append(aid)
     _kodi_db_enable(sorted(set(to_enable)))
+
+    # Post-install addon patches. Seren 2.1.9 hard-codes a Kodi -> MyVideos
+    # DB-version map that stops at Kodi 19; on Kodi 20+ it raises
+    # KeyError("Unsupported kodi version") on every startup, which kills
+    # the addon's service. Patch its globals.py to know about 20/21/22+.
+    _patch_seren_kodi_compat()
+
+    # Wire CocoScrapers into Umbrella, POV, and The Crew as their external
+    # source provider. Without this, the addons ship with internal
+    # scraping disabled AND no external provider configured, so every
+    # `play_Item` returns "no sources" and Kodi logs the title as
+    # "unplayable." This is the one missing puzzle-piece that turns
+    # "scrapers are installed" into "scrapers actually scrape."
+    _wire_cocoscrapers_into_scrapers()
+
     mark_done(state, "grey_addons", grey_failures=sorted(set(overall_failures)))
     return True
+
+
+def _wire_cocoscrapers_into_scrapers() -> None:
+    """Set each scraper's "external provider" to CocoScrapers and enable
+    cross-cutting source aggregation. Idempotent."""
+    # Umbrella + POV use the same setting names.
+    for addon in ("plugin.video.umbrella", "plugin.video.pov"):
+        if os.path.isdir(os.path.join(KODI_ADDONS, addon)):
+            _patch_addon_settings(addon, {
+                "provider.external.enabled":    "true",
+                "external_provider.name":       "CocoScrapers",
+                "external_provider.module":     "script.module.cocoscrapers",
+                "umbrella.externalWarning":     "false",       # umbrella-only no-op for pov
+                "externalProvider.notification": "false",      # pov-only no-op for umbrella
+            })
+            ok(f"  {addon}: external provider = CocoScrapers")
+    # The Crew has its own knob.
+    if os.path.isdir(os.path.join(KODI_ADDONS, "plugin.video.thecrew")):
+        _patch_addon_settings("plugin.video.thecrew", {
+            "cocoscrapers.enabled": "true",
+        })
+        ok("  plugin.video.thecrew: cocoscrapers.enabled = true")
+
+
+def _patch_seren_kodi_compat() -> None:
+    """Seren 2.1.9 (the version on nixgates as of 2026-05) doesn't know
+    about Kodi 20+ DB schemas. Append the missing rows so the addon
+    actually loads. Idempotent: skips if already patched."""
+    path = os.path.join(KODI_ADDONS, "plugin.video.seren",
+                        "resources", "lib", "modules", "globals.py")
+    if not os.path.isfile(path):
+        return
+    body = open(path, encoding="utf-8").read()
+    needle = ('        elif self.KODI_VERSION == 19:\n'
+              '            return "119"\n\n'
+              '        raise KeyError("Unsupported kodi version")')
+    if 'self.KODI_VERSION == 20' in body:
+        info("  seren: kodi-20 patch already present")
+        return
+    if needle not in body:
+        info("  seren: patch needle not found -- upstream may have changed format")
+        return
+    replacement = ('        elif self.KODI_VERSION == 19:\n'
+                   '            return "119"\n'
+                   '        elif self.KODI_VERSION == 20:\n'
+                   '            return "121"\n'
+                   '        elif self.KODI_VERSION == 21:\n'
+                   '            return "131"\n'
+                   '        elif self.KODI_VERSION >= 22:\n'
+                   '            return "131"  # future-default; bump when Piers ships\n\n'
+                   '        raise KeyError("Unsupported kodi version")')
+    open(path, "w", encoding="utf-8").write(body.replace(needle, replacement))
+    ok("  seren: patched globals.py to recognise Kodi 20 (MyVideos121) + 21 + 22+")
 
 
 def _kodi_db_enable(addon_ids: List[str]) -> None:
@@ -1228,41 +1313,44 @@ def _patch_pvr_enabled(userdata: str) -> None:
 
 
 def step_skin(state: Dict[str, Any]) -> bool:
-    header("Step 9 / 12  ·  B@Dtv theme on Arctic Zephyr MOD")
-    skin_dir = os.path.join(KODI_ADDONS, SKIN_ID)
-    if not os.path.isdir(skin_dir):
-        warn(f"{SKIN_ID} not installed -- skipping theme apply.")
-        warn("(Step 6 should have installed it; re-run `./badtv repair install_official`)")
-        return True
-    src = os.path.join(REPO_ROOT, "build", "wizard", "resources", "skin",
-                       SKIN_OVERRIDE_DIR_NAME, "colors", "badtv.xml")
-    if not os.path.isfile(src):
-        err(f"missing override: {src}")
-        return False
-    dst_dir = os.path.join(skin_dir, "colors")
-    os.makedirs(dst_dir, exist_ok=True)
-    shutil.copy2(src, os.path.join(dst_dir, "badtv.xml"))
-    ok(f"copied B@Dtv color override into {SKIN_ID}/colors/")
+    """Drop the B@Dtv color override into every installed skin that we
+    have a matching `colors/badtv.xml` for. Do NOT force-switch the active
+    skin -- let the user pick whichever skin they prefer on their display."""
+    header("Step 9 / 12  ·  B@Dtv color theme (skin-agnostic)")
 
-    # Patch guisettings.xml so Kodi activates the skin + color theme on
-    # next launch. Kodi overwrites this file when it exits cleanly, so the
-    # change only sticks if Kodi isn't currently running. Detect + kill if
-    # so, with the user's permission.
-    if _is_kodi_running():
-        warn("Kodi is currently running. guisettings.xml only takes effect "
-             "after a clean restart.")
-        if confirm("Kill the running Kodi so theme can apply?", default=True):
-            _kill_kodi()
-            ok("killed Kodi; will relaunch in the final step")
+    # Map skin_addon_id -> our override source dir name.
+    skin_overrides = {
+        "skin.arctic.zephyr.mod":       "arctic-zephyr-mod",
+        "skin.arctic.zephyr.reloaded":  "arctic-zephyr-reloaded",
+        "skin.estuary.modv2":           "estuary-mod-v2",
+        "skin.estuary":                 "estuary",
+    }
+    applied = []
+    for skin_id, override_dir_name in skin_overrides.items():
+        skin_dir = os.path.join(KODI_ADDONS, skin_id)
+        if not os.path.isdir(skin_dir):
+            continue
+        src = os.path.join(REPO_ROOT, "build", "wizard", "resources", "skin",
+                           override_dir_name, "colors", "badtv.xml")
+        if not os.path.isfile(src):
+            continue
+        dst_dir = os.path.join(skin_dir, "colors")
+        os.makedirs(dst_dir, exist_ok=True)
+        shutil.copy2(src, os.path.join(dst_dir, "badtv.xml"))
+        ok(f"copied B@Dtv color override into {skin_id}/colors/")
+        applied.append(skin_id)
 
-    if _patch_guisettings(KODI_USERDATA):
-        ok(f"guisettings.xml: lookandfeel.skin = {SKIN_ID}")
-        ok(f"guisettings.xml: lookandfeel.skincolors = {SKIN_THEME_NAME}")
-    else:
-        warn("could not patch guisettings.xml; apply manually in Kodi:")
-        warn(f"  Settings > Interface > Skin > {SKIN_ID}")
-        warn(f"  Settings > Skin > Colours > {SKIN_THEME_NAME}")
-    mark_done(state, "skin")
+    if not applied:
+        info("no matching skin found on disk -- B@Dtv color overrides only "
+             "exist for Arctic Zephyr (MOD / Reloaded) and Estuary (stock / MOD v2).")
+        info("Whatever skin you've selected (estouchy, estuary, anything else) "
+             "will keep its own colors; nothing here breaks it.")
+
+    info("not auto-switching the active skin -- whatever you've selected "
+         "in Settings > Interface > Skin stays.")
+    info("to use the B@Dtv colour theme: Settings > Skin > Colours > badtv "
+         "(only available if you pick one of the supported skins above).")
+    mark_done(state, "skin", skin_overrides_applied=applied)
     return True
 
 

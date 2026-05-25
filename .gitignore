@@ -33,3 +33,6 @@ media-scan-report.tsv
 
 # Smoke-test scratch dirs
 /tmp/_kodi_smoke/
+
+# Claude session state — local-only
+.claude/
