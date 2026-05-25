@@ -1163,7 +1163,7 @@ def _wire_cocoscrapers_into_scrapers() -> None:
         if os.path.isdir(os.path.join(KODI_ADDONS, addon)):
             _patch_addon_settings(addon, {
                 "provider.external.enabled":    "true",
-                "external_provider.name":       "CocoScrapers",
+                "external_provider.name":       "cocoscrapers",  # lowercase: Umbrella does `import_module(name)` and the python package is `cocoscrapers`
                 "external_provider.module":     "script.module.cocoscrapers",
                 "umbrella.externalWarning":     "false",       # umbrella-only no-op for pov
                 "externalProvider.notification": "false",      # pov-only no-op for umbrella
@@ -1271,6 +1271,18 @@ ELEMENTUM_REPO_URL    = "https://github.com/ElementumOrg/repository.elementumorg
 ELEMENTUM_BURST_URL   = "https://github.com/elgatito/script.elementum.burst/releases/download/v0.0.98/script.elementum.burst-0.0.98.zip"
 # Plugin URL is arch-specific; resolved at install time.
 ELEMENTUM_PLUGIN_BASE = "https://github.com/elgatito/plugin.video.elementum/releases/download/v0.1.113/plugin.video.elementum-0.1.113"
+
+# Jacktook -- newer torrent/meta-aggregator using Stremio's Comet /
+# MediaFusion / Torrentio addons (cloud-hosted indexers that pre-aggregate
+# from everywhere). Plays much better with RD than scraping individual
+# torrent sites does -- works even when 1337x / yts / torrentgalaxy are
+# DPI-blocked on the user's network.
+JACKTOOK_REPO_URL    = "https://sam-max.github.io/repository.jacktook/repository.jacktook-0.0.5.zip"
+JACKTOOK_DATADIR     = "https://raw.githubusercontent.com/Sam-Max/repository.jacktook/master/repo/zips"
+JACKTOOK_PLUGINS     = [
+    ("plugin.video.jacktook", "1.13.0"),
+    ("script.jacktook.burst", "0.0.92"),
+]
 
 
 def step_floor2_mount(state: Dict[str, Any]) -> bool:
@@ -1558,10 +1570,76 @@ def step_elementum(state: Dict[str, Any]) -> bool:
 
     _kodi_db_enable([aid for aid, _ in bundle])
     ok("Elementum stack installed, configured, and enabled")
+
+    # Also install Jacktook — same step makes sense because both are
+    # torrent-first addons and share the "needs RD configured" story.
+    # CocoScrapers/Burst-style scraping struggles when the user's network
+    # blocks the legacy torrent indexers (1337x, yts, torrentgalaxy all
+    # 403/blocked on Spectrum + most VPN exits). Jacktook talks to Stremio
+    # meta-aggregators (Comet, MediaFusion) which are reliably reachable
+    # and return RD-cached results.
+    _install_jacktook(state)
+    _kodi_db_enable(["repository.jacktook"] +
+                    [aid for aid, _ in JACKTOOK_PLUGINS])
+
     mark_done(state, "elementum",
               elementum_arch=arch,
               elementum_download_path=dl)
     return True
+
+
+def _install_jacktook(state: Dict[str, Any]) -> None:
+    """Install Jacktook (repo + plugin + Burst) and pre-enable its
+    Burst + external-scraper + Stremio search modes. Also pushes RD
+    credentials into Jacktook's settings.xml (it uses its own key set:
+    real_debrid_token, real_debrid_refresh_token, real_debrid_enabled,
+    real_debrid_user)."""
+    info("installing Jacktook (Stremio-style meta-aggregator)...")
+
+    # 1. repo wrapper
+    try:
+        if not os.path.isdir(os.path.join(KODI_ADDONS, "repository.jacktook")):
+            data = http_get(JACKTOOK_REPO_URL, timeout=60)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(KODI_ADDONS)
+            ok("  repository.jacktook installed")
+        else:
+            ok("  repository.jacktook already installed")
+    except Exception as exc:
+        warn(f"  jacktook repo download failed: {exc}")
+        return
+
+    # 2. plugin + burst
+    for aid, ver in JACKTOOK_PLUGINS:
+        if os.path.isdir(os.path.join(KODI_ADDONS, aid)):
+            ok(f"  {aid}: already installed")
+            continue
+        url = f"{JACKTOOK_DATADIR}/{aid}/{aid}-{ver}.zip"
+        try:
+            data = http_get(url, timeout=120)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(KODI_ADDONS)
+            ok(f"  {aid} v{ver} installed")
+        except Exception as exc:
+            warn(f"  {aid}: {exc}")
+
+
+def _configure_jacktook_rd(access: str, refresh: str, username: str) -> None:
+    """Push RD creds + sensible defaults into Jacktook's settings.xml.
+    Keys verified from plugin.video.jacktook/resources/settings.xml."""
+    if not os.path.isdir(os.path.join(KODI_ADDONS, "plugin.video.jacktook")):
+        return
+    _patch_addon_settings("plugin.video.jacktook", {
+        "real_debrid_enabled":       "true",
+        "real_debrid_token":         access,
+        "real_debrid_refresh_token": refresh,
+        "real_debrid_user":          username,
+        # Providers that work without separate accounts:
+        "jacktookburst_enabled":     "true",   # Burst-bundled torrent indexers
+        "external_scraper_enabled":  "true",   # uses CocoScrapers if installed
+        "stremio_enabled":           "true",   # optional Stremio addon-URL support
+    })
+    ok("  jacktook: RD + Burst + external_scraper + Stremio enabled")
 
 
 def _elementum_arch_tag() -> Optional[str]:
@@ -1889,6 +1967,10 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
         "rd.username":  username,
         "rd.expires":   expires,
     })
+
+    # Jacktook -- only set if the addon was already installed (it gets
+    # installed in step_elementum, which runs BEFORE step_realdebrid).
+    _configure_jacktook_rd(access, refresh, username)
 
 
 def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
