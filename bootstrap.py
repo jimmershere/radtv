@@ -1793,52 +1793,101 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
 
 
 def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str) -> None:
-    """Drop the RD credentials into every addon that uses RD natively.
+    """Drop the RD credentials into every scraper that uses RD natively.
 
-    Each scraper has its own RD setting schema. Writing them all in one
-    pass means the user can launch Kodi and start browsing without
-    re-authorizing inside Umbrella / The Crew / Seren / POV settings."""
+    Each scraper has its OWN key namespace and (worse) its OWN dedicated
+    "is RD on?" boolean. Until v2.3.x we wrote vaguely-named keys like
+    `realdebrid.token` that didn't match what any scraper actually
+    reads -- every scraper kept showing the "No Debrid Account setup,
+    account is required!" dialog because their on-disk slots were still
+    empty.
+
+    Exact keys come from grep of each addon's source 2026-05-25:
+
+      Umbrella  -- plugin.video.umbrella/resources/lib/debrid/realdebrid.py
+                   (`realdebridtoken` no dots, `realdebrid.clientid`,
+                   `realdebridsecret`, `realdebridrefresh`,
+                   `realdebridusername`) plus `realdebrid.enable=true`.
+
+      Seren     -- plugin.video.seren/resources/lib/modules/globals.py:1190
+                   (`realdebrid.enabled=true` AND `rd.auth=<token>`)
+                   plus the rd.* family from real_debrid.py.
+
+      POV       -- plugin.video.pov/resources/lib/debrids/real_debrid_api.py
+                   (`rd.token`, `rd.refresh`, `rd.client_id`, `rd.secret`,
+                   `rd.username`, `rd.expires`) plus `rd.enabled=true`.
+
+      The Crew  -- script.module.thecrew/lib/.../debridcheck.py:20
+                   reads from ResolveURL: `RealDebridResolver_enabled='true'`
+                   AND `RealDebridResolver_token!=''`.
+    """
     access  = token.get("access_token", "")
     refresh = token.get("refresh_token", "")
-    expires = str(int(time.time()) + int(token.get("expires_in", 0)))
+    # token.expires_in is seconds-from-now; addons store absolute epoch.
+    expires = str(int(time.time()) + int(token.get("expires_in", 0) or 7689600))
 
-    # ResolveURL: lowest common denominator -- many addons resolve through
-    # it instead of doing their own RD. Used by The Crew, Exodus, Venom etc.
+    # Fetch username from RD API -- Umbrella + Seren + POV all key off it.
+    # Non-fatal if the API is unreachable; addons will still work without it.
+    username = ""
+    try:
+        req = urllib.request.Request(
+            "https://api.real-debrid.com/rest/1.0/user",
+            headers={"Authorization": f"Bearer {access}",
+                     "User-Agent": USER_AGENT},
+        )
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            user = json.loads(resp.read().decode("utf-8"))
+        username = user.get("username", "")
+        info(f"  RD user: {username} ({user.get('type','?')}, "
+             f"expires {user.get('expiration','?')[:10]})")
+    except Exception as exc:
+        warn(f"  could not fetch RD username: {exc}")
+
+    # ResolveURL: used by The Crew (via debridcheck) and as a general
+    # link resolver across the ecosystem. `_enabled=true` is what The
+    # Crew explicitly checks.
     _patch_addon_settings("script.module.resolveurl", {
-        # ResolveURL declares login as type="bool" -- the addon rejects
-        # "1"/"0" with a "failed to load value" warning at startup.
-        "RealDebridResolver_login": "true",
-        "RealDebridResolver_client_id": client_id,
+        "RealDebridResolver_enabled":       "true",
+        "RealDebridResolver_login":         "true",   # hidden bool, defaults true
+        "RealDebridResolver_client_id":     client_id,
         "RealDebridResolver_client_secret": client_secret,
-        "RealDebridResolver_token": access,
-        "RealDebridResolver_refresh": refresh,
+        "RealDebridResolver_token":         access,
+        "RealDebridResolver_refresh":       refresh,
     })
-    # Umbrella: native RD integration with its own key scheme.
+
+    # Umbrella -- exact keys from realdebrid.py
     _patch_addon_settings("plugin.video.umbrella", {
-        "realdebrid.token": access,
-        "realdebrid.refresh": refresh,
-        "realdebrid.client_id": client_id,
-        "realdebrid.client_secret": client_secret,
-        "realdebrid.expires": expires,
-        "rd.authed": "true",
-        "debrid_priority1": "0",  # RD first
+        "realdebrid.enable":   "true",
+        "realdebridtoken":     access,
+        "realdebridrefresh":   refresh,
+        "realdebrid.clientid": client_id,
+        "realdebridsecret":    client_secret,
+        "realdebridusername":  username,
+        "realdebrid.priority": "10",
     })
-    # Seren follows roughly the same scheme as Umbrella.
+
+    # Seren -- needs BOTH `rd.auth` (token) AND `realdebrid.enabled=true`
+    # for its globals.py check at line 1190.
     _patch_addon_settings("plugin.video.seren", {
-        "rd.auth": access,
-        "rd.refresh": refresh,
-        "rd.client_id": client_id,
-        "rd.secret": client_secret,
-        "rd.expiry": expires,
-        "general.debridPriority": "0",
+        "realdebrid.enabled":  "true",
+        "rd.auth":             access,
+        "rd.refresh":          refresh,
+        "rd.client_id":        client_id,
+        "rd.secret":           client_secret,
+        "rd.username":         username,
+        "rd.expiry":           expires,
     })
-    # POV uses a `realdebrid_` prefix.
+
+    # POV -- `rd.enabled` defaults to true in its schema; we still write
+    # it explicitly so a previously-cleared install lights back up.
     _patch_addon_settings("plugin.video.pov", {
-        "realdebrid_token": access,
-        "realdebrid_refresh": refresh,
-        "realdebrid_client_id": client_id,
-        "realdebrid_secret": client_secret,
-        "realdebrid_expires": expires,
+        "rd.enabled":   "true",
+        "rd.token":     access,
+        "rd.refresh":   refresh,
+        "rd.client_id": client_id,
+        "rd.secret":    client_secret,
+        "rd.username":  username,
+        "rd.expires":   expires,
     })
 
 
