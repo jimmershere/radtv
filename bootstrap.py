@@ -1791,9 +1791,14 @@ def _register_stremio_aggregators(rd_token: str) -> None:
     from base64 import b64encode as _b64
 
     # Comet config -- json blob describing debrid services + filters,
-    # base64-encoded into the manifest path.
+    # base64-encoded into the manifest path. Tuned 2026-05-25:
+    #  * maxResultsPerResolution = 100 (was 25) -- ~3x more hits on
+    #    well-seeded titles like Inception (390 vs 120 in testing).
+    #  * scrapeDebridAccountTorrents = True -- also surface torrents
+    #    already cached in the user's RD library, so re-watches resolve
+    #    instantly without any new scrape.
     comet_settings = {
-        "maxResultsPerResolution": 25,
+        "maxResultsPerResolution": 100,
         "maxSize": 0,
         "cachedOnly": False,
         "sortCachedUncachedTogether": False,
@@ -1802,7 +1807,7 @@ def _register_stremio_aggregators(rd_token: str) -> None:
         "debridServices": [{"service": "realdebrid", "apiKey": rd_token}],
         "enableTorrent": False,
         "deduplicateStreams": True,
-        "scrapeDebridAccountTorrents": False,
+        "scrapeDebridAccountTorrents": True,
         "debridStreamProxyPassword": "",
         "languages": {"required": [], "allowed": [], "exclude": [], "preferred": []},
         "resolutions": {},
