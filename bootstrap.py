@@ -1151,8 +1151,107 @@ def step_grey_addons(state: Dict[str, Any]) -> bool:
     # "scrapers are installed" into "scrapers actually scrape."
     _wire_cocoscrapers_into_scrapers()
 
+    # Network-aware provider pruning. From your install location,
+    # check each torrent-indexer host: if it's 403/451/dead, disable
+    # the matching provider in CocoScrapers + Burst so searches don't
+    # waste 20s timing out. Reachable hosts stay enabled.
+    _prune_dead_providers()
+
     mark_done(state, "grey_addons", grey_failures=sorted(set(overall_failures)))
     return True
+
+
+# Hosts each CocoScrapers/Burst provider talks to. If the host is
+# unreachable (403/451/timeout/DNS-fail), disable the provider.
+PROVIDER_HOSTS = {
+    # CocoScrapers id  ->  representative URL it scrapes
+    "1337x":          "https://1337x.to/",
+    "bitsearch":      "https://bitsearch.to/",
+    "comet":          "https://comet.elfhosted.com/manifest.json",
+    "eztv":           "https://eztvx.to/",
+    "kickass2":       "https://kickasstorrents.cr/",
+    "knaben":         "https://knaben.org/",
+    "limetorrents":   "https://limetorrents.lol/",
+    "mediafusion":    "https://mediafusion.elfhosted.com/manifest.json",
+    "nyaa":           "https://nyaa.si/",
+    "piratebay":      "https://thepiratebay.org/",
+    "torrentdownload":"https://torrentdownload.info/",
+    "torrentgalaxy":  "https://torrentgalaxy.to/",
+    "torrentio":      "https://torrentio.strem.fun/manifest.json",
+    "torrentproject2":"https://torrentproject2.com/",
+    "ytsmx":          "https://yts.mx/",
+}
+
+
+def _prune_dead_providers() -> None:
+    """Probe each known torrent indexer + Stremio aggregator from this
+    install. Disable providers in CocoScrapers + Burst whose host is
+    blocked/down so searches don't waste time on guaranteed-fail lookups."""
+    info("probing indexers from this network...")
+    alive, dead = [], []
+    for provider, url in PROVIDER_HOSTS.items():
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
+                code = resp.status
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+        except Exception:
+            code = 0
+        if isinstance(code, int) and 200 <= code < 400:
+            alive.append(provider)
+        else:
+            dead.append(provider)
+    ok(f"  alive: {len(alive)}/{len(PROVIDER_HOSTS)}: {', '.join(alive)}")
+    if dead:
+        info(f"  dead/blocked: {', '.join(dead)}")
+
+    # Push the verdict into CocoScrapers settings
+    coco_desired = {}
+    for p in alive:
+        coco_desired[f"provider.{p}"] = "true"
+    for p in dead:
+        coco_desired[f"provider.{p}"] = "false"
+    _patch_addon_settings("script.module.cocoscrapers", coco_desired)
+    ok(f"  CocoScrapers: enabled {len(alive)}, disabled {len(dead)}")
+
+    # Burst providers use a different key namespace (use_<name>). Both
+    # script.elementum.burst and script.jacktook.burst follow the same
+    # convention. Map our cocoscrapers ids -> burst use_ keys.
+    burst_map = {
+        "1337x":          "use_1337x",
+        "eztv":           "use_eztv",
+        "kickass2":       "use_kickasstorrents",
+        "knaben":         "use_knaben",
+        "limetorrents":   "use_limetorrents",
+        "nyaa":           "use_nyaa",
+        "piratebay":      "use_thepiratebay",
+        "torrentgalaxy":  "use_torrentgalaxy",
+        "torrentio":      "use_torrentio",
+        "ytsmx":          "use_yts_mx",
+        "bitsearch":      "use_bitsearch",
+    }
+    for burst_addon in ("script.elementum.burst", "script.jacktook.burst"):
+        if not os.path.isdir(os.path.join(KODI_ADDONS, burst_addon)):
+            continue
+        desired = {}
+        for prov, key in burst_map.items():
+            desired[key] = "true" if prov in alive else "false"
+        _patch_addon_settings(burst_addon, desired)
+    ok("  Burst providers (Elementum + Jacktook) aligned to liveness verdict")
+
+    # Tighten scrape timeouts in the scrapers that have them, so a dead
+    # provider that DOES respond but slowly doesn't stall the user.
+    for addon, keys in [
+        ("plugin.video.umbrella", {"sources.timeout": "20",
+                                    "sources.scrapeAll": "false",
+                                    "sources.maxsourcesper": "10"}),
+        ("plugin.video.seren",    {"general.providers.timeout": "20"}),
+        ("plugin.video.pov",      {"sources_timeout": "20"}),
+    ]:
+        if os.path.isdir(os.path.join(KODI_ADDONS, addon)):
+            _patch_addon_settings(addon, keys)
 
 
 def _wire_cocoscrapers_into_scrapers() -> None:
