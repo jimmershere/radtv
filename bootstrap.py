@@ -440,7 +440,7 @@ def sudo_keepalive_loop_start() -> subprocess.Popen:
 # === STEPS ==================================================================
 
 def step_disclaimer(state: Dict[str, Any]) -> bool:
-    header("Step 1 / 12  ·  Legal disclaimer")
+    header("Step 1 / 14  ·  Legal disclaimer")
     if is_done(state, "disclaimer"):
         ok("already accepted on a prior run")
         return True
@@ -456,7 +456,7 @@ def step_disclaimer(state: Dict[str, Any]) -> bool:
 
 
 def step_apt(state: Dict[str, Any]) -> bool:
-    header("Step 2 / 12  ·  System packages (apt)")
+    header("Step 2 / 14  ·  System packages (apt)")
     if not shutil.which("apt-get"):
         warn("not on a Debian/Ubuntu box -- skipping. Install Kodi + binary "
              "addons + mpv + wireguard-tools + nftables manually for your distro.")
@@ -496,7 +496,7 @@ def step_apt(state: Dict[str, Any]) -> bool:
 
 
 def step_kodi_userdata(state: Dict[str, Any]) -> bool:
-    header("Step 3 / 12  ·  Bootstrap Kodi userdata")
+    header("Step 3 / 14  ·  Bootstrap Kodi userdata")
     os.makedirs(KODI_USERDATA, exist_ok=True)
     os.makedirs(KODI_ADDONS, exist_ok=True)
     os.makedirs(os.path.join(KODI_USERDATA, "addon_data"), exist_ok=True)
@@ -531,7 +531,7 @@ def step_kodi_userdata(state: Dict[str, Any]) -> bool:
 
 
 def step_vpn(state: Dict[str, Any]) -> bool:
-    header("Step 4 / 12  ·  VPN")
+    header("Step 4 / 14  ·  VPN")
     if is_done(state, "vpn"):
         ok("already configured on a prior run "
            f"(provider: {state.get('vars', {}).get('vpn_provider', '?')})")
@@ -705,7 +705,7 @@ def verify_exit_ip() -> None:
 
 def step_install_repo_addon(state: Dict[str, Any]) -> bool:
     """Install the B@Dtv repository addon and wizard addon from local zips."""
-    header("Step 5 / 12  ·  B@Dtv addons (repository + wizard)")
+    header("Step 5 / 14  ·  B@Dtv addons (repository + wizard)")
     # Auto-discover the current built zips so we don't have to chase
     # version-string bumps in two places.
     dist = os.path.join(REPO_ROOT, "dist")
@@ -742,7 +742,7 @@ def step_install_repo_addon(state: Dict[str, Any]) -> bool:
 
 def step_install_official(state: Dict[str, Any]) -> bool:
     """Download Kodi-official addons directly from mirrors.kodi.tv."""
-    header("Step 6 / 12  ·  Kodi-official addons")
+    header("Step 6 / 14  ·  Kodi-official addons")
 
     # If the addons already exist on disk from a prior run, the only thing
     # left to do is make sure they're enabled in Addons33.db. Skip the
@@ -1022,7 +1022,7 @@ def step_grey_addons(state: Dict[str, Any]) -> bool:
     CocoScrapers, ResolveURL) automatically. This is what makes Real-Debrid
     actually useful inside Kodi -- without these, the in-Kodi browser is
     limited to whatever the official mirror serves."""
-    header("Step 7 / 12  ·  Grey-area scrapers (Umbrella / Crew / Seren / POV)")
+    header("Step 7 / 14  ·  Grey-area scrapers (Umbrella / Crew / Seren / POV)")
 
     major_tag = _kodi_major_tag()
     info(f"Kodi major: {major_tag}")
@@ -1253,8 +1253,338 @@ def _kodi_db_enable(addon_ids: List[str]) -> None:
         con.close()
 
 
+# --- floor2 NAS mount (SSHFS) + Elementum torrent stack ---------------------
+#
+# Defaults match the canonical TheClawFirm floor2 layout: ZFS pool `datapool`
+# with `/datapool/media/{movies,tv,music,downloads}`. Override via env
+# (FLOOR2_HOST, FLOOR2_USER, FLOOR2_REMOTE_PATH, FLOOR2_MOUNTPOINT) or by
+# editing config/badtv.conf before running setup.
+
+FLOOR2_DEFAULT_HOST = "192.168.1.206"
+FLOOR2_DEFAULT_USER = "floor2"
+FLOOR2_DEFAULT_REMOTE = "/datapool/media"
+FLOOR2_DEFAULT_MOUNTPOINT = os.path.expanduser("~/floor2-media")
+FLOOR2_KEY = os.path.expanduser("~/.ssh/floor2_mount")
+FLOOR2_SSH_ALIAS = "floor2-mount"
+
+ELEMENTUM_REPO_URL    = "https://github.com/ElementumOrg/repository.elementumorg/releases/download/v0.0.7/repository.elementumorg-0.0.7.zip"
+ELEMENTUM_BURST_URL   = "https://github.com/elgatito/script.elementum.burst/releases/download/v0.0.98/script.elementum.burst-0.0.98.zip"
+# Plugin URL is arch-specific; resolved at install time.
+ELEMENTUM_PLUGIN_BASE = "https://github.com/elgatito/plugin.video.elementum/releases/download/v0.1.113/plugin.video.elementum-0.1.113"
+
+
+def step_floor2_mount(state: Dict[str, Any]) -> bool:
+    """Mount the floor2 ZFS media dataset over SSHFS so Elementum can write
+    downloads there AND Kodi can scan its library scrapers against the
+    same paths. Idempotent. Sets up:
+      - dedicated SSH key (~/.ssh/floor2_mount) authorized on floor2
+      - SSH config alias `floor2-mount`
+      - systemd --user unit for auto-mount on login
+      - immediate sshfs mount if not already mounted
+      - Kodi sources.xml entries for movies / tv / downloads / music"""
+    header("Step 8 / 14  ·  floor2 NAS mount (SSHFS)")
+
+    host    = os.environ.get("FLOOR2_HOST", FLOOR2_DEFAULT_HOST)
+    user    = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+    remote  = os.environ.get("FLOOR2_REMOTE_PATH", FLOOR2_DEFAULT_REMOTE)
+    mnt     = os.environ.get("FLOOR2_MOUNTPOINT", FLOOR2_DEFAULT_MOUNTPOINT)
+
+    info(f"floor2: {user}@{host}:{remote}  ->  {mnt}")
+
+    # 1. sshfs installed?
+    if not shutil.which("sshfs"):
+        info("installing sshfs (apt)...")
+        if not ensure_sudo():
+            warn("can't install sshfs without sudo; skipping mount")
+            return True
+        try:
+            run(["sudo", "apt-get", "install", "-y", "sshfs"], capture=True)
+        except subprocess.CalledProcessError as exc:
+            warn(f"sshfs install failed: {exc}; skipping")
+            return True
+        ok("sshfs installed")
+    else:
+        ok("sshfs already installed")
+
+    # 2. dedicated ed25519 keypair for the mount
+    if not os.path.isfile(FLOOR2_KEY):
+        info("generating mount keypair ~/.ssh/floor2_mount")
+        run(["ssh-keygen", "-t", "ed25519", "-N", "", "-C",
+             f"kodi-mount@{socket.gethostname()}", "-f", FLOOR2_KEY, "-q"])
+    else:
+        ok("mount keypair already exists")
+    pub_path = FLOOR2_KEY + ".pub"
+    pub_key  = open(pub_path).read().strip()
+
+    # 3. authorize key on floor2 (assumes user already has SOME working ssh to floor2)
+    info(f"authorizing public key on {user}@{host}...")
+    auth_cmd = (
+        f"mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && "
+        f"chmod 600 ~/.ssh/authorized_keys && grep -qF '{pub_key}' "
+        f"~/.ssh/authorized_keys || echo '{pub_key}' >> ~/.ssh/authorized_keys"
+    )
+    try:
+        run(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+             f"{user}@{host}", auth_cmd], capture=True)
+        ok("public key authorized on floor2")
+    except subprocess.CalledProcessError as exc:
+        warn(f"could not authorize key on {host}: {exc}")
+        warn("manually copy ~/.ssh/floor2_mount.pub to "
+             f"{user}@{host}:~/.ssh/authorized_keys, then re-run "
+             "`./badtv repair floor2`")
+        return True   # non-blocking
+
+    # 4. SSH config rule for the dedicated key
+    _patch_ssh_config(host, user)
+    ok(f"ssh config alias: {FLOOR2_SSH_ALIAS} -> {user}@{host}")
+
+    # 5. systemd --user unit for auto-mount
+    _install_floor2_systemd_unit(mnt, remote)
+    ok("systemd --user unit installed: floor2-media.service")
+
+    # 6. mount NOW if not already mounted
+    if not os.path.ismount(mnt):
+        os.makedirs(mnt, exist_ok=True)
+        try:
+            run([
+                "sshfs", f"{FLOOR2_SSH_ALIAS}:{remote}", mnt,
+                "-o", "reconnect",
+                "-o", "ServerAliveInterval=30",
+                "-o", "ServerAliveCountMax=3",
+                "-o", "follow_symlinks",
+                "-o", "idmap=user",
+                "-o", "cache=yes",
+                "-o", "kernel_cache",
+                "-o", "compression=no",
+                "-o", "auto_cache",
+                "-o", f"IdentityFile={FLOOR2_KEY}",
+                "-o", "BatchMode=yes",
+            ], capture=True)
+            ok(f"mounted: {mnt}")
+        except subprocess.CalledProcessError as exc:
+            warn(f"mount failed: {exc.stderr[:200] if hasattr(exc, 'stderr') and exc.stderr else exc}")
+            warn("re-run `./badtv repair floor2` once floor2 is reachable")
+            return True
+    else:
+        ok(f"already mounted: {mnt}")
+
+    # 7. write-test
+    test_path = os.path.join(mnt, "downloads", ".badtv-write-test")
+    try:
+        os.makedirs(os.path.dirname(test_path), exist_ok=True)
+        with open(test_path, "w") as fh:
+            fh.write("ok")
+        os.remove(test_path)
+        ok("write test passed")
+    except Exception as exc:
+        warn(f"write test failed: {exc} -- check permissions on remote dataset")
+
+    # 8. add Kodi sources.xml entries pointing at the mount
+    _patch_kodi_sources_xml(mnt)
+    ok("Kodi sources.xml updated (Movies / TV Shows / Downloads / Music)")
+
+    mark_done(state, "floor2", floor2_host=host, floor2_mount=mnt)
+    return True
+
+
+def _patch_ssh_config(host: str, user: str) -> None:
+    """Add a Host floor2-mount alias to ~/.ssh/config if missing."""
+    cfg = os.path.expanduser("~/.ssh/config")
+    rule = (
+        f"\nHost {FLOOR2_SSH_ALIAS}\n"
+        f"  HostName {host}\n"
+        f"  User {user}\n"
+        f"  IdentityFile {FLOOR2_KEY}\n"
+        f"  IdentitiesOnly yes\n"
+        f"  ServerAliveInterval 30\n"
+        f"  ServerAliveCountMax 3\n"
+    )
+    body = open(cfg).read() if os.path.isfile(cfg) else ""
+    if f"Host {FLOOR2_SSH_ALIAS}" in body:
+        return
+    os.makedirs(os.path.dirname(cfg), exist_ok=True)
+    with open(cfg, "a") as fh:
+        fh.write(rule)
+    os.chmod(cfg, 0o600)
+
+
+def _install_floor2_systemd_unit(mnt: str, remote: str) -> None:
+    """Drop a systemd --user unit so the SSHFS mount auto-reconnects on
+    login + restarts on failure."""
+    unit_dir = os.path.expanduser("~/.config/systemd/user")
+    os.makedirs(unit_dir, exist_ok=True)
+    unit = f"""[Unit]
+Description=SSHFS mount of floor2:{remote} at {mnt}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+ExecStartPre=/bin/mkdir -p {mnt}
+ExecStart=/usr/bin/sshfs {FLOOR2_SSH_ALIAS}:{remote} {mnt} \\
+  -o reconnect \\
+  -o ServerAliveInterval=30 \\
+  -o ServerAliveCountMax=3 \\
+  -o follow_symlinks \\
+  -o idmap=user \\
+  -o cache=yes \\
+  -o kernel_cache \\
+  -o compression=no \\
+  -o auto_cache \\
+  -o IdentityFile={FLOOR2_KEY} \\
+  -o BatchMode=yes
+ExecStop=/usr/bin/fusermount3 -u {mnt}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+"""
+    with open(os.path.join(unit_dir, "floor2-media.service"), "w") as fh:
+        fh.write(unit)
+    run_ok(["systemctl", "--user", "daemon-reload"])
+    run_ok(["systemctl", "--user", "enable", "floor2-media.service"])
+
+
+def _patch_kodi_sources_xml(mnt: str) -> None:
+    """Idempotently merge floor2 movies/tv/downloads/music into Kodi's
+    sources.xml, replacing any pre-existing 'floor2 *' entries or stale
+    nfs:// floor2 references."""
+    path = os.path.join(KODI_USERDATA, "sources.xml")
+    if os.path.isfile(path):
+        try:
+            tree = ET.parse(path); root = tree.getroot()
+        except ET.ParseError:
+            root = ET.Element("sources"); tree = ET.ElementTree(root)
+    else:
+        root = ET.Element("sources"); tree = ET.ElementTree(root)
+        for sec in ("programs", "video", "music", "pictures", "files", "games"):
+            e = ET.SubElement(root, sec)
+            ET.SubElement(e, "default", pathversion="1")
+
+    # Strip every floor2-or-NFS-pointed source first
+    for section_name in ("video", "music", "pictures", "files", "programs", "games"):
+        sec = root.find(section_name)
+        if sec is None: continue
+        for s in list(sec.findall("source")):
+            name = (s.findtext("name") or "").lower()
+            spath = (s.findtext("path") or "").lower()
+            if "floor2" in name or spath.startswith("nfs://"):
+                sec.remove(s)
+
+    desired = [
+        ("video", "floor2 Movies",    os.path.join(mnt, "movies") + "/"),
+        ("video", "floor2 TV Shows",  os.path.join(mnt, "tv") + "/"),
+        ("video", "floor2 Downloads", os.path.join(mnt, "downloads") + "/"),
+        ("music", "floor2 Music",     os.path.join(mnt, "music") + "/"),
+    ]
+    for section, name, src_path in desired:
+        sec = root.find(section)
+        if sec is None:
+            sec = ET.SubElement(root, section)
+            ET.SubElement(sec, "default", pathversion="1")
+        s = ET.SubElement(sec, "source")
+        ET.SubElement(s, "name").text = name
+        ET.SubElement(s, "path", pathversion="1").text = src_path
+        ET.SubElement(s, "allowsharing").text = "true"
+
+    tree.write(path, encoding="UTF-8", xml_declaration=True)
+
+
+def step_elementum(state: Dict[str, Any]) -> bool:
+    """Install the Elementum torrent-streaming + download stack, point its
+    download dir at the floor2 mount, and enable in Kodi DB.
+
+    Elementum is the maintained fork of Quasar (which is dead since 2019).
+    Architecture: Go-based daemon (bundled binary per platform) + Python
+    plugin shell + the Burst provider that feeds it search results.
+    Direct download mode writes finished files to the configured path
+    (here: <floor2-mount>/downloads/) so they're SAFE on the ZFS pool
+    rather than the laptop's tiny disk."""
+    header("Step 9 / 14  ·  Elementum torrent stack")
+
+    arch = _elementum_arch_tag()
+    if arch is None:
+        warn(f"unsupported architecture: {platform.machine()}; skipping Elementum")
+        mark_done(state, "elementum", elementum="skipped_unsupported_arch")
+        return True
+    info(f"arch: {arch}")
+
+    plugin_url = f"{ELEMENTUM_PLUGIN_BASE}.{arch}.zip"
+    bundle = [
+        ("repository.elementumorg", ELEMENTUM_REPO_URL),
+        ("plugin.video.elementum",  plugin_url),
+        ("script.elementum.burst",  ELEMENTUM_BURST_URL),
+    ]
+    failed = []
+    for aid, url in bundle:
+        if os.path.isdir(os.path.join(KODI_ADDONS, aid)):
+            ok(f"{aid}: already installed")
+            continue
+        info(f"downloading {aid}")
+        try:
+            data = http_get(url, timeout=180)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(KODI_ADDONS)
+            ok(f"{aid} installed")
+        except Exception as exc:
+            warn(f"{aid} failed: {exc}")
+            failed.append(aid)
+
+    if "plugin.video.elementum" in failed:
+        err("core Elementum plugin missing -- aborting")
+        return True
+
+    # Configure: download path goes to floor2 mount/downloads
+    mnt = state.get("vars", {}).get("floor2_mount", FLOOR2_DEFAULT_MOUNTPOINT)
+    dl  = os.path.join(mnt, "downloads")
+    lib = mnt
+    info(f"download_path: {dl}")
+    info(f"library_path:  {lib}")
+
+    _patch_addon_settings("plugin.video.elementum", {
+        "download_storage":    "0",          # 0 = file (disk), 1 = memory
+        "download_path":       dl,
+        "library_path":        lib,
+        "library_resume_jobs": "true",
+        "background_handling": "true",
+        "move_files":          "true",
+        "completed_move_path": dl,
+        "keep_files":          "false",
+        "keep_originals":      "false",
+        "download_file_strategy": "0",       # 0 = all files
+        "first_run":           "false",
+    })
+
+    _kodi_db_enable([aid for aid, _ in bundle])
+    ok("Elementum stack installed, configured, and enabled")
+    mark_done(state, "elementum",
+              elementum_arch=arch,
+              elementum_download_path=dl)
+    return True
+
+
+def _elementum_arch_tag() -> Optional[str]:
+    """Return the Elementum release asset suffix for this host's architecture."""
+    m = platform.machine().lower()
+    sys_name = platform.system().lower()
+    if sys_name == "linux":
+        if m in ("x86_64", "amd64"):  return "linux_x64"
+        if m in ("i386", "i686"):     return "linux_x86"
+        if m == "aarch64":            return "linux_arm64"
+        if m == "armv7l":             return "linux_armv7"
+        if m == "armv6l":             return "linux_armv6"
+    elif sys_name == "darwin":
+        if m in ("x86_64", "amd64"):  return "darwin_x64"
+        if m == "arm64":              return "darwin_arm64"
+    elif sys_name == "windows":
+        if m in ("amd64", "x86_64"):  return "windows_x64"
+        if m in ("i386", "i686"):     return "windows_x86"
+    return None
+
+
 def step_pvr(state: Dict[str, Any]) -> bool:
-    header("Step 8 / 12  ·  PVR IPTV Simple Client")
+    header("Step 10 / 14  ·  PVR IPTV Simple Client")
     pvr_dir = os.path.join(KODI_USERDATA, "addon_data", "pvr.iptvsimple")
     os.makedirs(pvr_dir, exist_ok=True)
     path = os.path.join(pvr_dir, "settings.xml")
@@ -1316,7 +1646,7 @@ def step_skin(state: Dict[str, Any]) -> bool:
     """Drop the B@Dtv color override into every installed skin that we
     have a matching `colors/badtv.xml` for. Do NOT force-switch the active
     skin -- let the user pick whichever skin they prefer on their display."""
-    header("Step 9 / 12  ·  B@Dtv color theme (skin-agnostic)")
+    header("Step 11 / 14  ·  B@Dtv color theme (skin-agnostic)")
 
     # Map skin_addon_id -> our override source dir name.
     skin_overrides = {
@@ -1399,7 +1729,7 @@ def _patch_guisettings(userdata: str) -> bool:
 
 
 def step_realdebrid(state: Dict[str, Any]) -> bool:
-    header("Step 10 / 12  ·  Real-Debrid (optional)")
+    header("Step 12 / 14  ·  Real-Debrid (optional)")
     if not confirm("Authorize Real-Debrid now? (skip if no account)", default=True):
         info("skipped Real-Debrid")
         mark_done(state, "realdebrid", realdebrid="skipped")
@@ -1536,7 +1866,7 @@ def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
 
 
 def step_trakt(state: Dict[str, Any]) -> bool:
-    header("Step 11 / 12  ·  Trakt")
+    header("Step 13 / 14  ·  Trakt")
     info("Trakt sync requires a registered Trakt OAuth app, which B@Dtv")
     info("doesn't ship one of (would require us to host client credentials).")
     info("")
@@ -1595,7 +1925,7 @@ def step_trakt(state: Dict[str, Any]) -> bool:
 
 
 def step_stream_test(state: Dict[str, Any]) -> bool:
-    header("Step 12 / 12  ·  Stream test (mpv)")
+    header("Step 14 / 14  ·  Stream test (mpv)")
     if not shutil.which("mpv"):
         warn("mpv not installed; skipping stream test")
         mark_done(state, "stream_test", stream_test="skipped_no_mpv")
@@ -1704,6 +2034,8 @@ STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
     ("badtv_addons",        step_install_repo_addon),
     ("install_official",    step_install_official),
     ("grey_addons",         step_grey_addons),
+    ("floor2",              step_floor2_mount),
+    ("elementum",           step_elementum),
     ("pvr",                 step_pvr),
     ("skin",                step_skin),
     ("realdebrid",          step_realdebrid),
