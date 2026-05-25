@@ -1624,22 +1624,166 @@ def _install_jacktook(state: Dict[str, Any]) -> None:
             warn(f"  {aid}: {exc}")
 
 
-def _configure_jacktook_rd(access: str, refresh: str, username: str) -> None:
-    """Push RD creds + sensible defaults into Jacktook's settings.xml.
-    Keys verified from plugin.video.jacktook/resources/settings.xml."""
+def _configure_jacktook_rd(access: str, refresh: str, username: str,
+                            client_id: str = "", client_secret: str = "") -> None:
+    """Push RD creds + sensible defaults into Jacktook's settings.xml AND
+    register Stremio meta-aggregators (Comet, MediaFusion) in its SQLite
+    cache so search returns RD-cached streams immediately.
+
+    Why this is complicated: Jacktook's `real_debrid_token` setting is
+    base64(client_id:client_secret:refresh_token), not the access_token.
+    On every API call Jacktook decodes that, hits RD's /token endpoint
+    to mint a fresh access_token, then makes the actual request. Writing
+    the access_token raw produces "UnicodeDecodeError 'utf-8' codec
+    can't decode byte 0xf5" because b64 decode of the access_token is
+    binary garbage.
+
+    Also: Stremio meta-aggregator addons (Comet, MediaFusion) need the
+    user's RD token baked into the manifest URL. Comet's format is:
+
+        https://comet.elfhosted.com/{base64(json_config)}/manifest.json
+
+    where json_config contains `debridServices: [{service, apiKey}]`.
+    Pre-register both addons by inserting them into Jacktook's
+    plugin.video.jacktook.cached.sqlite under `stremio_user_addons`
+    + `stremio_addons` keys.
+    """
     if not os.path.isdir(os.path.join(KODI_ADDONS, "plugin.video.jacktook")):
         return
+
+    # Build the b64(client_id:client_secret:refresh_token) token JACKTOOK wants
+    if client_id and client_secret and refresh:
+        from base64 import b64encode as _b64
+        jt_token = _b64(f"{client_id}:{client_secret}:{refresh}".encode()).decode()
+    else:
+        jt_token = ""
+
     _patch_addon_settings("plugin.video.jacktook", {
         "real_debrid_enabled":       "true",
-        "real_debrid_token":         access,
-        "real_debrid_refresh_token": refresh,
+        "real_debrid_token":         jt_token,    # b64(client_id:secret:refresh)
         "real_debrid_user":          username,
+        "real_debid_authorized":     "true",      # YES the addon's key has a typo
         # Providers that work without separate accounts:
-        "jacktookburst_enabled":     "true",   # Burst-bundled torrent indexers
-        "external_scraper_enabled":  "true",   # uses CocoScrapers if installed
-        "stremio_enabled":           "true",   # optional Stremio addon-URL support
+        "jacktookburst_enabled":     "true",      # Burst-bundled torrent indexers
+        "external_scraper_enabled":  "true",      # uses CocoScrapers if installed
+        "external_scraper_module":   "script.module.cocoscrapers",
+        "external_scraper_module_name": "cocoscrapers",
+        "stremio_enabled":           "true",      # Stremio addon-URL support
+        # Default download dir (Jacktook's own download manager) -> floor2
+        "download_dir":              os.path.expanduser("~/floor2-media/downloads/"),
+        "organize_downloads":        "true",
+        "download_folder_movies":    "Movies",
+        "download_folder_tvshows":   "TV Shows",
     })
     ok("  jacktook: RD + Burst + external_scraper + Stremio enabled")
+
+    # Register Stremio meta-aggregators in Jacktook's SQLite cache.
+    _register_stremio_aggregators(access)
+
+
+def _register_stremio_aggregators(rd_token: str) -> None:
+    """Register Comet + MediaFusion in Jacktook's cache so search returns
+    RD-cached streams from the Stremio ecosystem (way more reliable than
+    direct torrent-site scraping)."""
+    if not rd_token:
+        return
+    import sqlite3
+    import pickle
+    from base64 import b64encode as _b64
+
+    # Comet config -- json blob describing debrid services + filters,
+    # base64-encoded into the manifest path.
+    comet_settings = {
+        "maxResultsPerResolution": 25,
+        "maxSize": 0,
+        "cachedOnly": False,
+        "sortCachedUncachedTogether": False,
+        "removeTrash": True,
+        "resultFormat": ["all"],
+        "debridServices": [{"service": "realdebrid", "apiKey": rd_token}],
+        "enableTorrent": False,
+        "deduplicateStreams": True,
+        "scrapeDebridAccountTorrents": False,
+        "debridStreamProxyPassword": "",
+        "languages": {"required": [], "allowed": [], "exclude": [], "preferred": []},
+        "resolutions": {},
+        "options": {"remove_ranks_under": -10000000000.0,
+                    "allow_english_in_languages": False,
+                    "remove_unknown_languages": False},
+    }
+    comet_b64 = _b64(json.dumps(comet_settings, separators=(',', ':')).encode()).decode()
+    comet_url = f"https://comet.elfhosted.com/{comet_b64}/manifest.json"
+    mediafusion_url = "https://mediafusion.elfhosted.com/manifest.json"
+
+    # Fetch each manifest -- skip silently if unreachable (offline / VPN)
+    aggregators = []
+    for url in (comet_url, mediafusion_url):
+        try:
+            manifest = http_get_json(url, timeout=15)
+            aggregators.append({
+                "manifest": manifest,
+                "transportUrl": url,
+                "transportName": "custom",
+            })
+        except Exception as exc:
+            warn(f"  could not register {url[:60]}...: {exc}")
+    if not aggregators:
+        return
+
+    db_path = os.path.join(
+        KODI_USERDATA, "addon_data", "plugin.video.jacktook",
+        "plugin.video.jacktook.cached.sqlite")
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    con = sqlite3.connect(db_path)
+    con.execute("""CREATE TABLE IF NOT EXISTS cached (
+        key TEXT PRIMARY KEY NOT NULL,
+        data BLOB NOT NULL,
+        expires TIMESTAMP NOT NULL)""")
+    # Python's sqlite3 TIMESTAMP adapter wants 'YYYY-MM-DD HH:MM:SS.ffffff'
+    # WITH A SPACE separator -- ISO 'T' form bombs out at row read time.
+    expiry = (datetime.now(timezone.utc).replace(tzinfo=None) +
+              timedelta(days=365 * 5)).strftime("%Y-%m-%d %H:%M:%S.%f")
+
+    # Merge with existing user-added addons
+    existing: list = []
+    row = con.execute("SELECT data FROM cached WHERE key='stremio_user_addons'").fetchone()
+    if row:
+        try: existing = pickle.loads(row[0]) or []
+        except Exception: existing = []
+    keys_to_select = []
+    for agg in aggregators:
+        url = agg["transportUrl"]
+        # Skip if a row with this transportUrl already exists
+        if any(a.get("transportUrl") == url for a in existing):
+            continue
+        existing.append(agg)
+        # Compute the addon_key (manifest id + transport URL)
+        mid = agg["manifest"].get("id", "")
+        keys_to_select.append(f"{mid}|{url.rsplit('/',1)[0]}")
+    con.execute("INSERT OR REPLACE INTO cached (key,data,expires) VALUES (?,?,?)",
+                ("stremio_user_addons",
+                 sqlite3.Binary(pickle.dumps(existing)), expiry))
+
+    # Mark them as selected for STREAM resource
+    selected: list = []
+    sel_row = con.execute("SELECT data FROM cached WHERE key='stremio_addons'").fetchone()
+    if sel_row:
+        try:
+            raw = pickle.loads(sel_row[0])
+            selected = json.loads(raw) if isinstance(raw, str) else (raw or [])
+            if not isinstance(selected, list): selected = []
+        except Exception:
+            selected = []
+    for k in keys_to_select:
+        if k and k not in selected:
+            selected.append(k)
+    con.execute("INSERT OR REPLACE INTO cached (key,data,expires) VALUES (?,?,?)",
+                ("stremio_addons",
+                 sqlite3.Binary(pickle.dumps(json.dumps(selected))), expiry))
+    con.commit()
+    con.close()
+    ok(f"  jacktook: registered {len(aggregators)} Stremio aggregator(s) "
+       "(Comet + MediaFusion via ElfHosted)")
 
 
 def _elementum_arch_tag() -> Optional[str]:
@@ -1970,7 +2114,7 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
 
     # Jacktook -- only set if the addon was already installed (it gets
     # installed in step_elementum, which runs BEFORE step_realdebrid).
-    _configure_jacktook_rd(access, refresh, username)
+    _configure_jacktook_rd(access, refresh, username, client_id, client_secret)
 
 
 def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
