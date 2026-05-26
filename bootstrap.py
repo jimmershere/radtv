@@ -46,7 +46,7 @@ from xml.etree import ElementTree as ET
 
 # --- constants ---------------------------------------------------------------
 
-VERSION = "2.3.0"
+VERSION = "3.0.0-fork"
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 STATE_DIR = os.path.expanduser("~/.config/badtv")
 STATE_PATH = os.path.join(STATE_DIR, "state.json")
@@ -121,11 +121,10 @@ GREY_REPOS: List[Dict[str, Any]] = [
         "repo_zip_url": "https://umbrellaplug.github.io/repository.umbrella-2.2.6.zip",
         "plugins": ["plugin.video.umbrella"],
     },
-    {
-        "name": "The Crew",
-        "repo_zip_url": "https://team-crew.github.io/repository.thecrew-0.3.8.zip",
-        "plugins": ["plugin.video.thecrew"],
-    },
+    # The Crew removed in v3.0 fork (2026-05-26): mid-2025 user reports across
+    # r/Addons4Kodi describe "hardly any links even with Real Debrid" -- the
+    # repo is in a zombie state. step_cleanup will uninstall it if it's
+    # present from a prior bootstrap run.
     {
         "name": "Seren",
         "repo_zip_url": "https://nixgates.github.io/packages/repository.nixgates-2.2.0.zip",
@@ -159,6 +158,28 @@ REALDEBRID_CLIENT_ID = "X245A4XAIBGVM"   # public RD client id used by URLResolv
 REALDEBRID_DEVICE_URL = "https://api.real-debrid.com/oauth/v2/device/code"
 REALDEBRID_CREDS_URL  = "https://api.real-debrid.com/oauth/v2/device/credentials"
 REALDEBRID_TOKEN_URL  = "https://api.real-debrid.com/oauth/v2/token"
+
+# TorBox -- alternative debrid that survived the May 2026 RD filename-keyword
+# filter. Simple API-key auth (no OAuth dance): user pastes a key from
+# https://torbox.app/settings.
+TORBOX_BASE_URL = "https://api.torbox.app/v1/api"
+TORBOX_USER_URL = f"{TORBOX_BASE_URL}/user/me"
+
+# Byparr -- FlareSolverr-API-compatible replacement (Camoufox / anti-detection
+# Firefox). Drop-in: same port 8191, same JSON API, so Prowlarr's existing
+# "FlareSolverr" indexer-proxy implementation continues to work.
+BYPARR_IMAGE = "ghcr.io/thephaseless/byparr:latest"
+
+# Usenet defaults. NZBGeek = open-registration NZB indexer ($10/yr). Pair with
+# a Usenet provider (Eweka / Newshosting / Frugal). Usenet sidesteps Cloudflare
+# entirely + has multi-year retention -- the most stable backend in 2026.
+SABNZBD_IMAGE = "lscr.io/linuxserver/sabnzbd:latest"
+SABNZBD_PORT  = 8080
+
+# Jellyfin -- optional web/mobile frontend that reads the *arr-managed library
+# directly. Off by default in step_jellyfin; flipped on if the user asks.
+JELLYFIN_IMAGE = "jellyfin/jellyfin:latest"
+JELLYFIN_PORT  = 8096
 
 USER_AGENT = f"B@Dtv-bootstrap/{VERSION}"
 HTTP_TIMEOUT = 20
@@ -1735,11 +1756,16 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes: [./prowlarr:/config]
     ports: ["9696:9696"]
-    depends_on: [flaresolverr]
+    depends_on: [byparr]
 
-  flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: badtv-flaresolverr
+  # Byparr -- FlareSolverr-API-compatible drop-in replacement built on Camoufox
+  # (anti-detection Firefox). Cloudflare's 2025-2026 challenge escalation has
+  # made vanilla FlareSolverr unreliable; Byparr exposes the same JSON endpoint
+  # on the same port so Prowlarr's existing "FlareSolverr" indexer-proxy entry
+  # continues to work pointing at host=http://badtv-byparr:8191/.
+  byparr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: badtv-byparr
     restart: unless-stopped
     environment: [LOG_LEVEL=info, TZ=America/New_York]
     ports: ["8191:8191"]
@@ -1816,6 +1842,39 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     volumes:
       - ./qbittorrent:/config
       - /datapool/media/qbit-downloads:/downloads
+
+  # SABnzbd -- Usenet download client. Runs in parallel to rdt-client + qbit
+  # so Sonarr/Radarr can prefer Usenet (higher signal-to-noise, no Cloudflare,
+  # no DMCA whack-a-mole at the indexer layer) and fall back to torrents.
+  # Configured by step_usenet after the user provides NZBGeek + provider creds.
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: badtv-sabnzbd
+    restart: unless-stopped
+    environment: [PUID=1000, PGID=1000, TZ=America/New_York]
+    volumes:
+      - ./sabnzbd:/config
+      - /datapool/media/usenet:/downloads
+    ports: ["8080:8080"]
+
+  # Jellyfin -- optional web/mobile frontend. Gated behind ./.badtv-jellyfin
+  # marker (created by step_jellyfin when the user opts in). The container
+  # definition stays in compose so a `docker compose up -d jellyfin` works
+  # the moment the marker is touched.
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: badtv-jellyfin
+    restart: unless-stopped
+    profiles: ["jellyfin"]  # only starts when --profile jellyfin is passed
+    user: "1000:1000"
+    environment: [TZ=America/New_York]
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - /datapool/media:/media:ro
+    ports:
+      - "8096:8096"
+      - "8920:8920"   # HTTPS (optional)
 """
 
     env_template = """# Gluetun VPN credentials. Until these are filled, the gluetun
@@ -1854,9 +1913,10 @@ QBITTORRENT_PASSWORD=B@Dtv2026!
     setup_cmd = f"""
 set -e
 STACK=/datapool/preserved/badtv-arr
-sudo mkdir -p $STACK/prowlarr $STACK/flaresolverr $STACK/sonarr $STACK/radarr \\
+sudo mkdir -p $STACK/prowlarr $STACK/byparr $STACK/sonarr $STACK/radarr \\
               $STACK/rdt-client/data $STACK/gluetun $STACK/qbittorrent \\
-              /datapool/media/qbit-downloads
+              $STACK/sabnzbd $STACK/jellyfin \\
+              /datapool/media/qbit-downloads /datapool/media/usenet
 sudo chown -R floor2:floor2 $STACK /datapool/media/qbit-downloads
 if [ ! -f $STACK/.env ]; then
   cat > $STACK/.env <<'ENV'
@@ -1894,18 +1954,19 @@ docker compose up -d
 
     prowlarr_url = f"http://{floor2_host}:9696"
 
-    # Register FlareSolverr as an indexer-proxy (container name resolves
-    # inside the docker network)
-    info("registering FlareSolverr in Prowlarr...")
+    # Register Byparr as an indexer-proxy using Prowlarr's "FlareSolverr"
+    # implementation -- Byparr is API-compatible so the same payload works.
+    # (Container name resolves inside the docker network.)
+    info("registering Byparr in Prowlarr (FlareSolverr-compatible)...")
     fs_payload = {
         "onTagsChanged": False,
-        "name": "flaresolverr",
+        "name": "byparr",
         "implementation": "FlareSolverr",
         "implementationName": "FlareSolverr",
         "configContract": "FlareSolverrSettings",
         "tags": [],
         "fields": [
-            {"name": "host", "value": "http://badtv-flaresolverr:8191/"},
+            {"name": "host", "value": "http://badtv-byparr:8191/"},
             {"name": "requestTimeout", "value": 60},
         ],
     }
@@ -2821,6 +2882,112 @@ def _write_rd_settings(token: Dict[str, Any], client_id: str, client_secret: str
     _configure_jacktook_rd(access, refresh, username, client_id, client_secret)
 
 
+def step_torbox(state: Dict[str, Any]) -> bool:
+    """Authorize TorBox as a parallel debrid service to Real-Debrid.
+
+    Why: in May 2026 Real-Debrid added a filename-keyword filter that blocks
+    nearly every standard scene release tag (WEB-DL, WEBRip, AMZN, NF, YTS,
+    RARBG, etc.), causing most libraries to lose 50-70% of cached files
+    overnight (ElfHosted post-mortem 2026-05-12). TorBox uses a simpler
+    API-key auth and (as of writing) does not enforce the same filter, so
+    it's the consensus refuge for cache-based streaming.
+
+    We keep Real-Debrid wired into rdt-client for *arr library downloads
+    and add TorBox as an alternate cache provider in the Kodi scraper
+    addons so they fall through to TorBox when RD says \"infringing_file\".
+
+    The user pastes their API key from https://torbox.app/settings -- no
+    OAuth device flow on TorBox's side.
+    """
+    header("New · TorBox (alternate debrid; RD-filter refuge)")
+    if not confirm("Authorize TorBox now? (skip if no account)", default=True):
+        info("skipped TorBox")
+        mark_done(state, "torbox", torbox="skipped")
+        return True
+
+    info("Get your API key from: https://torbox.app/settings (\"API\" tab)")
+    api_key = ask("paste TorBox API key (or blank to skip)", default="")
+    if not api_key:
+        info("no key entered -- skipping")
+        mark_done(state, "torbox", torbox="skipped")
+        return True
+
+    # Verify the key by hitting /user/me. Non-fatal if the network blips --
+    # we still write the key so the addons can retry on their own.
+    username, plan = "", ""
+    try:
+        req = urllib.request.Request(
+            TORBOX_USER_URL,
+            headers={"Authorization": f"Bearer {api_key}",
+                     "User-Agent": USER_AGENT},
+        )
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            user = json.loads(resp.read().decode("utf-8"))
+        data = user.get("data") or {}
+        username = data.get("email") or str(data.get("id", "")) or ""
+        plan = str(data.get("plan", ""))
+        ok(f"TorBox authorized: {username} (plan={plan or '?'})")
+    except Exception as exc:
+        warn(f"could not verify TorBox key ({exc}); writing anyway")
+
+    _write_torbox_settings(api_key, username)
+    mark_done(state, "torbox", torbox="authorized",
+              torbox_user=username, torbox_plan=plan)
+    return True
+
+
+def _write_torbox_settings(api_key: str, username: str) -> None:
+    """Drop the TorBox API key into every addon that supports it.
+
+    Exact keys grepped from each addon 2026-05-26:
+
+      Umbrella  -- plugin.video.umbrella/resources/settings.xml
+                   (`torbox.enable`, `torboxtoken`, `torbox.username`,
+                   `torbox.priority`).
+
+      POV       -- plugin.video.pov/resources/lib/debrids/torbox*.py reads
+                   `tb.token` via get_setting(); `tb.enabled` is the
+                   on-switch in settings.xml.
+
+      Jacktook  -- plugin.video.jacktook/resources/settings.xml
+                   (`torbox_enabled`, `torbox_user`, `torbox_token`).
+
+      ResolveURL-- script.module.resolveurl/resources/settings.xml
+                   (`TorBoxResolver_enabled`, `TorBoxResolver_apikey`,
+                   `TorBoxResolver_torrents`).
+
+      Seren     -- the upstream nixgates build does NOT include TorBox.
+                   The Hooty fork does; if the user switches to it, add a
+                   parallel write here (`torbox.enabled`, `tb.apikey`).
+    """
+    _patch_addon_settings("script.module.resolveurl", {
+        "TorBoxResolver_enabled":       "true",
+        "TorBoxResolver_apikey":        api_key,
+        "TorBoxResolver_torrents":      "true",
+        "TorBoxResolver_web_downloads": "true",
+    })
+
+    _patch_addon_settings("plugin.video.umbrella", {
+        "torbox.enable":    "true",
+        "torboxtoken":      api_key,
+        "torbox.username":  username,
+        "torbox.priority":  "20",   # lower than RD's 10 so RD tries first;
+                                    # bump to 5 if RD's filter keeps biting
+    })
+
+    _patch_addon_settings("plugin.video.pov", {
+        "tb.enabled": "true",
+        "tb.token":   api_key,
+        "tb.username": username,
+    })
+
+    _patch_addon_settings("plugin.video.jacktook", {
+        "torbox_enabled": "true",
+        "torbox_token":   api_key,
+        "torbox_user":    username,
+    })
+
+
 def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
     """Idempotently merge `desired` into <addon_id>'s settings.xml. Safe
     to call even if the addon isn't installed yet -- we just create the
@@ -3003,6 +3170,301 @@ def step_launch(state: Dict[str, Any]) -> bool:
     return True
 
 
+def step_usenet(state: Dict[str, Any]) -> bool:
+    """Bring up SABnzbd on floor2, register an NZB indexer in Prowlarr, and
+    wire SABnzbd as a parallel download client in Sonarr + Radarr.
+
+    Why: Usenet sidesteps Cloudflare entirely, has multi-year retention,
+    and faces slower DMCA-takedown velocity at the indexer layer than any
+    torrent ecosystem. After May 2026's RD filename-keyword filter, Usenet
+    became the single most-recommended stability move for anyone running
+    an *arr stack -- the May 2026 ElfHosted post-mortem flags it as the
+    primary refuge alongside TorBox.
+
+    This step is non-blocking: skipping it leaves the existing
+    Real-Debrid + qBittorrent path untouched. Resume later via
+    `./badtv repair usenet` once credentials are in hand.
+    """
+    header("New · Usenet (SABnzbd + NZB indexer + *arr clients)")
+    if not confirm("Set up the Usenet path now? (needs a paid Usenet "
+                   "provider + an NZB indexer like NZBGeek)", default=True):
+        info("skipped Usenet")
+        mark_done(state, "usenet", usenet="skipped")
+        return True
+
+    floor2_host = state.get("vars", {}).get("floor2_host", FLOOR2_DEFAULT_HOST)
+    floor2_user = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+    prowlarr_apikey = state.get("vars", {}).get("prowlarr_apikey", "")
+    sonarr_apikey   = state.get("vars", {}).get("sonarr_apikey", "")
+    radarr_apikey   = state.get("vars", {}).get("radarr_apikey", "")
+
+    if not prowlarr_apikey:
+        warn("Prowlarr API key not in state -- run `./badtv repair prowlarr` first")
+        return True
+
+    # === credentials ====================================================
+    section("Usenet provider (newsserver)")
+    info("Recommended: Eweka (eu) or Newshosting (us). ~$60-80/yr.")
+    nzb_host = ask("provider host (e.g. news.eweka.nl)", default="news.eweka.nl")
+    nzb_port = ask("provider port (563 = SSL, 119 = plain)", default="563")
+    nzb_user = ask("provider username", default="")
+    nzb_pass = ask("provider password", default="")
+    nzb_conn = ask("max connections (provider's plan dictates)", default="20")
+
+    section("NZB indexer (Newznab API)")
+    info("Recommended: NZBGeek (open registration, ~$10/yr).")
+    idx_name    = ask("indexer display name", default="NZBGeek")
+    idx_baseurl = ask("indexer base url", default="https://api.nzbgeek.info")
+    idx_apikey  = ask("indexer API key", default="")
+
+    if not (nzb_user and nzb_pass and idx_apikey):
+        warn("missing credentials -- skipping")
+        mark_done(state, "usenet", usenet="incomplete")
+        return True
+
+    # === bring SABnzbd up ===============================================
+    info("starting SABnzbd container on floor2...")
+    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}",
+                   "cd /datapool/preserved/badtv-arr && docker compose up -d sabnzbd"]):
+        warn("failed to start sabnzbd container")
+        mark_done(state, "usenet", usenet="error")
+        return True
+    ok("sabnzbd container up")
+
+    # Grab the auto-generated SAB API key from sabnzbd.ini (created on first start)
+    info("waiting for SABnzbd to initialize...")
+    sab_apikey, sab_nzbkey = "", ""
+    for _ in range(30):
+        time.sleep(2)
+        cp = subprocess.run(
+            ["ssh", f"{floor2_user}@{floor2_host}",
+             "sudo cat /datapool/preserved/badtv-arr/sabnzbd/sabnzbd.ini "
+             "2>/dev/null | grep -E '^(api_key|nzb_key)' | head -2"],
+            capture_output=True, text=True, timeout=15)
+        for line in cp.stdout.splitlines():
+            if line.startswith("api_key"):
+                sab_apikey = line.split("=", 1)[1].strip()
+            elif line.startswith("nzb_key"):
+                sab_nzbkey = line.split("=", 1)[1].strip()
+        if sab_apikey:
+            break
+    if not sab_apikey:
+        warn("could not read SABnzbd API key; container may still be starting")
+        warn("re-run `./badtv repair usenet` in a minute")
+        return True
+    ok(f"SABnzbd API key: {sab_apikey[:8]}...")
+
+    sab_url = f"http://{floor2_host}:8080"
+
+    # === register the news server via SAB's REST API ====================
+    info(f"registering newsserver {nzb_host}:{nzb_port}...")
+    server_params = {
+        "mode":        "set_config",
+        "section":     "servers",
+        "keyword":     "primary",
+        "host":        nzb_host,
+        "port":        nzb_port,
+        "ssl":         "1" if nzb_port == "563" else "0",
+        "username":    nzb_user,
+        "password":    nzb_pass,
+        "connections": nzb_conn,
+        "enable":      "1",
+        "apikey":      sab_apikey,
+        "output":      "json",
+    }
+    try:
+        req = urllib.request.Request(
+            sab_url + "/api?" + urllib.parse.urlencode(server_params),
+            headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            json.loads(resp.read().decode())
+        ok("SABnzbd newsserver registered")
+    except Exception as exc:
+        warn(f"SAB set_config failed: {exc} (configure via web UI: {sab_url})")
+
+    # === register NZB indexer in Prowlarr ===============================
+    prowlarr_url = f"http://{floor2_host}:9696"
+    info(f"adding {idx_name} indexer to Prowlarr...")
+    schemas = _prowlarr_api(prowlarr_url, prowlarr_apikey, "GET",
+                            "/api/v1/indexer/schema") or []
+    # Try a specific NZBGeek schema first; fall back to generic Newznab.
+    match = next((s for s in schemas if s.get("name") == idx_name), None)
+    if not match:
+        match = next((s for s in schemas if s.get("name") == "Newznab"), None)
+    if match:
+        # Inject the credentials into the schema's field list.
+        fields = match.get("fields", [])
+        for f in fields:
+            if f.get("name") == "baseUrl":
+                f["value"] = idx_baseurl
+            elif f.get("name") == "apiKey":
+                f["value"] = idx_apikey
+            elif f.get("name") == "apiPath":
+                f["value"] = f.get("value", "/api")
+        profiles = _prowlarr_api(prowlarr_url, prowlarr_apikey, "GET",
+                                 "/api/v1/appprofile") or []
+        profile_id = profiles[0]["id"] if profiles else 1
+        payload = {**match, "name": idx_name, "enable": True,
+                   "appProfileId": profile_id, "priority": 25,
+                   "fields": fields}
+        res = _prowlarr_api(prowlarr_url, prowlarr_apikey, "POST",
+                            "/api/v1/indexer", payload=payload, ignore_dupe=True)
+        if res:
+            ok(f"  {idx_name}: added to Prowlarr (Sonarr+Radarr auto-sync)")
+        else:
+            warn(f"  {idx_name}: add failed (already exists?)")
+    else:
+        warn(f"no schema match for {idx_name} in Prowlarr -- add manually at {prowlarr_url}")
+
+    # === register SABnzbd as a download client in Sonarr + Radarr =======
+    def _make_sab(name, category):
+        return {
+            "enable": True, "protocol": "usenet", "priority": 1,
+            "removeCompletedDownloads": True, "removeFailedDownloads": True,
+            "name": name, "tags": [],
+            "implementationName": "SABnzbd",
+            "implementation":     "Sabnzbd",
+            "configContract":     "SabnzbdSettings",
+            "fields": [
+                {"name": "host",      "value": "badtv-sabnzbd"},
+                {"name": "port",      "value": 8080},
+                {"name": "apiKey",    "value": sab_apikey},
+                {"name": "username",  "value": ""},
+                {"name": "password",  "value": ""},
+                {"name": "tvCategory","value": category} if "tv" in category else
+                {"name": "movieCategory","value": category},
+                {"name": "useSsl",    "value": False},
+                {"name": "urlBase",   "value": ""},
+                {"name": "recentTvPriority", "value": -100},
+                {"name": "olderTvPriority",  "value": -100},
+            ],
+        }
+    for app_url, app_key, label, category in (
+        (f"http://{floor2_host}:8989", sonarr_apikey, "Sonarr", "tv"),
+        (f"http://{floor2_host}:7878", radarr_apikey, "Radarr", "movies"),
+    ):
+        if not app_key:
+            warn(f"  {label}: no API key in state -- skip")
+            continue
+        existing_dc = _arr_api(app_url, app_key, "GET",
+                               "/api/v3/downloadclient") or []
+        if any(d.get("name") == "sabnzbd" for d in existing_dc):
+            ok(f"  {label}: sabnzbd already registered")
+            continue
+        res = _arr_api(app_url, app_key, "POST", "/api/v3/downloadclient",
+                       payload=_make_sab("sabnzbd", category),
+                       ignore_dupe=True)
+        if res:
+            ok(f"  {label}: sabnzbd registered as Usenet client")
+
+    mark_done(state, "usenet",
+              usenet="configured",
+              sab_apikey=sab_apikey,
+              nzb_indexer=idx_name)
+    info(f"SABnzbd web UI: {sab_url}  (login uses the API key as password)")
+    return True
+
+
+def step_jellyfin(state: Dict[str, Any]) -> bool:
+    """Optional: bring up Jellyfin as a parallel web/mobile frontend over
+    the *arr-managed library.
+
+    Why optional: Kodi is the user's primary frontend and works fine. Jellyfin
+    is purely additive -- web UI for any browser, native apps on iOS/Android/
+    Roku/AppleTV/Samsung -- backed by the SAME /datapool/media tree.
+
+    Plex was the obvious alternative but Jellyfin overtook it among
+    self-hosters in 2024-2025 (per JellyWatch's r/selfhosted survey)
+    after Plex's $249.99 lifetime hike + ending free remote streaming.
+
+    The container definition is in the compose template under
+    `profiles: [jellyfin]` so it stays dormant until this step opts in.
+    """
+    header("New · Jellyfin (optional web/mobile frontend)")
+    if not confirm("Bring up Jellyfin as a parallel frontend?", default=False):
+        info("skipped Jellyfin (Kodi remains the only frontend)")
+        mark_done(state, "jellyfin", jellyfin="skipped")
+        return True
+
+    floor2_host = state.get("vars", {}).get("floor2_host", FLOOR2_DEFAULT_HOST)
+    floor2_user = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+
+    info("starting jellyfin container on floor2 (with --profile jellyfin)...")
+    cmd = ("cd /datapool/preserved/badtv-arr && "
+           "docker compose --profile jellyfin up -d jellyfin")
+    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}", cmd]):
+        warn("failed to start jellyfin container")
+        mark_done(state, "jellyfin", jellyfin="error")
+        return True
+
+    url = f"http://{floor2_host}:8096"
+    ok(f"Jellyfin starting at {url}")
+    info("first-time setup is via the web UI: create an admin user, then")
+    info(f"add /media/tv (Shows) and /media/movies (Movies) as libraries.")
+    info("The container mounts /datapool/media:/media:ro so it sees everything")
+    info("Sonarr/Radarr drop in -- no separate scan path config needed.")
+    mark_done(state, "jellyfin", jellyfin="started", jellyfin_url=url)
+    return True
+
+
+def step_cleanup(state: Dict[str, Any]) -> bool:
+    """Idempotently prune dead addons + dead container references from
+    prior bootstrap runs.
+
+    What gets removed (each is no-op if absent):
+      * plugin.video.thecrew + repository.thecrew -- zombie since mid-2025
+      * plugin.video.crackle (any leftover from pre-2026-05-24 bootstrap)
+      * badtv-flaresolverr container (now replaced by badtv-byparr in the
+        compose; the orphaned container would otherwise hold port 8191)
+    """
+    header("New · Cleanup (prune dead addons + replaced containers)")
+
+    pruned = []
+
+    # Kodi addons that are zombie/retired
+    for addon_id in (
+        "plugin.video.thecrew",
+        "repository.thecrew",
+        "plugin.video.crackle",
+        "repository.crackle",
+    ):
+        path = os.path.join(KODI_ADDONS, addon_id)
+        if os.path.isdir(path):
+            try:
+                shutil.rmtree(path)
+                ok(f"  removed {addon_id}")
+                pruned.append(addon_id)
+            except Exception as exc:
+                warn(f"  {addon_id}: rm failed ({exc})")
+        # also clear addon_data so Kodi doesn't try to restore state
+        data = os.path.join(KODI_USERDATA, "addon_data", addon_id)
+        if os.path.isdir(data):
+            try:
+                shutil.rmtree(data)
+            except Exception:
+                pass
+
+    # Orphaned FlareSolverr container on floor2 (compose now ships Byparr)
+    floor2_host = state.get("vars", {}).get("floor2_host", FLOOR2_DEFAULT_HOST)
+    floor2_user = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+    if run_ok(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+               f"{floor2_user}@{floor2_host}", "true"]):
+        cp = subprocess.run(
+            ["ssh", f"{floor2_user}@{floor2_host}",
+             "docker ps -a --format '{{.Names}}' | grep -x badtv-flaresolverr || true"],
+            capture_output=True, text=True, timeout=15)
+        if "badtv-flaresolverr" in cp.stdout:
+            if run_ok(["ssh", f"{floor2_user}@{floor2_host}",
+                       "docker rm -f badtv-flaresolverr"]):
+                ok("  removed orphaned badtv-flaresolverr container")
+                pruned.append("badtv-flaresolverr")
+
+    if not pruned:
+        ok("nothing to clean up (already pruned)")
+    mark_done(state, "cleanup", cleanup="done", pruned=pruned)
+    return True
+
+
 # === wizard runner ===========================================================
 
 STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
@@ -3013,12 +3475,16 @@ STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
     ("badtv_addons",        step_install_repo_addon),
     ("install_official",    step_install_official),
     ("grey_addons",         step_grey_addons),
+    ("cleanup",             step_cleanup),        # v3: prune zombies (The Crew etc.)
     ("floor2",              step_floor2_mount),
-    ("prowlarr",            step_prowlarr),
+    ("prowlarr",            step_prowlarr),       # v3: now deploys Byparr (not FlareSolverr)
+    ("usenet",              step_usenet),         # v3: SABnzbd + NZB indexer + *arr clients
+    ("jellyfin",            step_jellyfin),       # v3: optional web/mobile frontend
     ("elementum",           step_elementum),
     ("pvr",                 step_pvr),
     ("skin",                step_skin),
     ("realdebrid",          step_realdebrid),
+    ("torbox",              step_torbox),         # v3: alternate debrid (RD-filter refuge)
     ("trakt",               step_trakt),
     ("stream_test",         step_stream_test),
     ("launch",              step_launch),

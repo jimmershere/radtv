@@ -5,6 +5,12 @@
 ![Theme](https://img.shields.io/badge/Theme-Black%20Donnellys-0E3B2E)
 ![floor2](https://img.shields.io/badge/optional-floor2%20NAS-A89E84)
 
+> **You are on the `fork/v2-torbox-usenet` branch (v3.0.0-fork).** This fork
+> adds TorBox + Usenet as parallel backends, swaps FlareSolverr → Byparr,
+> prunes zombie addons (The Crew, Crackle), and scaffolds optional Jellyfin.
+> Driven by the May 2026 Real-Debrid filter event. See `CHANGELOG.md` for
+> the full diff and `docs/grey-area-streaming-2026.pdf` for the why.
+
 > **Read first**: [`DISCLAIMER.md`](DISCLAIMER.md) · [`NOTICE.md`](NOTICE.md) ·
 > [`docs/PRIVACY.md`](docs/PRIVACY.md). B@Dtv is GPL-3.0 packaging software
 > with no warranty. You decide what to install and what to stream;
@@ -98,9 +104,11 @@ touch layouts. Apply via wizard or copy by hand — see
 | Tier                       | What's included                                                                    |
 | -------------------------- | ---------------------------------------------------------------------------------- |
 | Free / legal linear        | Pluto TV, Plex Live, Samsung TV+, Stirr, PBS, ABC News Live, NBC News Now          |
-| Free / legal VOD addons    | Tubi, Pluto TV, Crackle, Peacock free tier, IMDb TV, YouTube                       |
-| Premium scrapers (opt-in)  | Umbrella, Seren, The Crew, FEN Light, Scrubs V2, Exodus Redux                      |
-| Unrestriction              | Real-Debrid (~$4/mo) via URLResolver — required for cached premium links           |
+| Free / legal VOD addons    | Tubi, Pluto TV, Peacock free tier, IMDb TV, YouTube *(Crackle removed 2026-05-24)* |
+| Premium scrapers (opt-in)  | Umbrella, Seren, POV, Jacktook *(The Crew/FEN/Scrubs/Exodus retired — zombie repos)* |
+| Unrestriction              | Real-Debrid (~$4/mo) **+ TorBox (~$3/mo)** in parallel — TorBox is the May 2026 RD-filter refuge |
+| Usenet path *(v3)*         | SABnzbd + NZBGeek (or any Newznab) wired into Sonarr/Radarr — the stable backend   |
+| Cloudflare bypass *(v3)*   | Byparr (Camoufox-based, FlareSolverr-API compatible)                               |
 | Watch state                | Trakt across every supported addon                                                 |
 | Subtitles                  | A4K Subtitles                                                                      |
 | International / news / sports | iptv-org per-country + per-category lists, toggleable in `iptv/sources.yaml`    |

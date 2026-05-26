@@ -1,5 +1,86 @@
 # Changelog
 
+## 3.0.0-fork — TorBox + Usenet + Byparr; prune the zombies (2026-05-26)
+
+> **Branch:** `fork/v2-torbox-usenet`. Scaffolded as a separate fork while
+> the in-tree v2 bootstrap continues to work for users on Real-Debrid alone.
+
+### Why this fork exists
+
+Two things broke in the last six months:
+
+1. **Real-Debrid filename-keyword filter (May 2026)** blocks every common
+   scene release tag (`WEB-DL`, `WEBRip`, `AMZN`, `NF`, `CR`, `YTS`,
+   `RARBG`, `[rartv]`, `[eztv]` ...). Sonarr/Radarr libraries lost 50-70%
+   of cached files overnight per ElfHosted's post-mortem.
+2. **FlareSolverr** is losing the Cloudflare arms race. Browser-fingerprint
+   detection + interactive CAPTCHA gates increasingly bypass it.
+
+The fix isn't a smarter scraper -- it's adding **two independent backends**
+so a single provider's policy change can't gut the library again.
+
+### What landed
+
+- **TorBox alternate debrid** (`step_torbox`). New phase prompts for a TorBox
+  API key (paste from torbox.app/settings -- no OAuth dance) and writes it
+  into Umbrella, POV, Jacktook, and ResolveURL using each addon's actual
+  setting-key schema (grepped from source 2026-05-26). Runs in parallel to
+  Real-Debrid: RD stays priority 10, TorBox priority 20 -- bump TorBox if
+  the May 2026 RD filter keeps biting.
+
+- **Usenet path** (`step_usenet`). Adds SABnzbd to the floor2 docker stack,
+  prompts for newsserver + NZBGeek (or any Newznab indexer) credentials,
+  registers the indexer in Prowlarr (auto-syncs to Sonarr+Radarr), wires
+  SABnzbd as a Usenet download client in Sonarr+Radarr alongside the
+  existing rdt-client. Usenet's signal-to-noise advantage is real now that
+  DMCA velocity at the indexer layer has spiked: no Cloudflare, retention
+  in years, slower takedown pipeline.
+
+- **FlareSolverr → Byparr** (in-place swap in `step_prowlarr`). Byparr
+  ships the same JSON API on the same port (8191) via Camoufox
+  (anti-detection Firefox), so Prowlarr's existing "FlareSolverr"
+  indexer-proxy implementation works unchanged. `step_cleanup` removes the
+  orphaned `badtv-flaresolverr` container on upgrade.
+
+- **Optional Jellyfin frontend** (`step_jellyfin`). Off by default. Brings
+  up a parallel web/mobile UI over the same /datapool/media tree. Gated
+  behind docker-compose's `profiles: [jellyfin]` so it stays dormant until
+  the user opts in. Kodi remains the primary frontend; Jellyfin is purely
+  additive for browser + iOS/Android/Roku/AppleTV/Samsung viewing.
+
+- **The Crew removed** from the GREY_REPOS list. Mid-2025 user reports
+  consistently describe "hardly any links even with Real Debrid"; the repo
+  is zombie. `step_cleanup` uninstalls it (plus its repo + any leftover
+  `plugin.video.crackle`) on existing installs. CocoScrapers stays; the
+  research flagged Magneto/Viper as better-maintained forks, but that's a
+  user choice and not in scope.
+
+### Step order (was 16, now 20)
+
+```
+disclaimer → apt → kodi_userdata → vpn → badtv_addons → install_official
+  → grey_addons → CLEANUP (v3) → floor2 → prowlarr (Byparr now)
+  → USENET (v3) → JELLYFIN (v3, opt-in) → elementum → pvr → skin
+  → realdebrid → TORBOX (v3) → trakt → stream_test → launch
+```
+
+Each new step is non-blocking: skip ones you don't need; resume any of
+them later via `./badtv repair <step>`. State machine unchanged --
+`~/.config/badtv/state.json` tracks each new step independently.
+
+### Verification still needed
+
+- TorBox setting keys for Seren are based on the upstream nixgates build,
+  which doesn't include TorBox. If the user later switches to the Hooty
+  fork (which adds TorBox), add a parallel write in `_write_torbox_settings`.
+- SABnzbd schema name in Prowlarr: code falls back to "Newznab" if a
+  specific "NZBGeek" definition isn't present; verify your Prowlarr build.
+- Byparr is still relatively young (April 2025 launch); if Cloudflare
+  beats it the way it eventually beat FlareSolverr, the swap is just one
+  image change in `step_prowlarr`.
+
+---
+
 ## 2.3.0 — Grey-area scraper auto-install + Kodi DB pre-enable (2026-05-24)
 
 ### What landed
