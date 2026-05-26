@@ -1987,6 +1987,31 @@ docker compose up -d
                  payload={"path": "/media/movies"}, ignore_dupe=True)
         ok("Radarr root folder: /media/movies")
 
+    # Critical: register a Remote Path Mapping in BOTH *arr so they translate
+    # rdt-client's reported `/datapool/media/downloads/...` (the host path,
+    # because rdt-client mounts /datapool/media/downloads:/data/downloads
+    # but reports the host side) into `/media/downloads/...` (what Sonarr
+    # /Radarr can actually read via their own /datapool/media:/media mount).
+    # Without this map, completed downloads from rdt-client sit in queue
+    # with trackedDownloadStatus=warning and never get imported.
+    for url, key, label in (
+        (sonarr_url, sona_key, "Sonarr"),
+        (radarr_url, rada_key, "Radarr"),
+    ):
+        if not key: continue
+        existing_maps = _arr_api(url, key, "GET", "/api/v3/remotepathmapping") or []
+        if any("/datapool/media/" in (m.get("remotePath") or "") for m in existing_maps):
+            ok(f"  {label}: remote-path map already exists")
+            continue
+        res = _arr_api(url, key, "POST", "/api/v3/remotepathmapping",
+                       payload={"host": "badtv-rdtclient",
+                                "remotePath": "/datapool/media/downloads/",
+                                "localPath":  "/media/downloads/"},
+                       ignore_dupe=True)
+        if res:
+            ok(f"  {label}: remote-path map registered "
+               "(rdt-client → /media/downloads/)")
+
     # Register Sonarr + Radarr in Prowlarr so it auto-pushes indexers
     app_schemas = _prowlarr_api(prowlarr_url, apikey, "GET",
                                 "/api/v1/applications/schema") or []
