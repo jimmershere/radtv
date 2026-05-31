@@ -21,8 +21,13 @@
 > Hell's Kitchen-grade Kodi build. Brick walls, whiskey amber, deep emerald,
 > a back-bar full of streaming sources, and a wizard that actually does the
 > work instead of waving at you.
+>
+> **Migration note:** the project has moved from `jimmershere/badtv` to
+> `jimmershere/radtv`. The old repository is private and archived. See
+> [`docs/MIGRATION.md`](docs/MIGRATION.md) for clone, Kodi addon, and floor2
+> legacy-name notes.
 
-**R&Dtv** (née *TerraKodi*) is TheClawFirm's pre-configured Kodi distribution
+**R&Dtv** (née *B@Dtv*, originally *TerraKodi*) is TheClawFirm's pre-configured Kodi distribution
 with a **Black Donnellys**-inspired UI — the brilliant, brief NBC drama about
 four brothers running a Hell's Kitchen bar. The build pulls from the best
 free / lawful US linear sources, the strongest community scrapers, and
@@ -200,6 +205,7 @@ Full design + maintenance flow: [`docs/SCRAPERS.md`](docs/SCRAPERS.md).
 - [`NOTICE.md`](NOTICE.md) — third-party trademarks
 - [`docs/PRIVACY.md`](docs/PRIVACY.md) — VPN / DNS / anonymizer guide
 - [`docs/INSTALL.md`](docs/INSTALL.md)
+- [`docs/MIGRATION.md`](docs/MIGRATION.md)
 - [`docs/JELLYFIN.md`](docs/JELLYFIN.md)
 - [`docs/SETUP-GUIDE.md`](docs/SETUP-GUIDE.md)
 - [`docs/ADDON-LIST.md`](docs/ADDON-LIST.md)

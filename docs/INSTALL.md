@@ -47,6 +47,15 @@ apt step on a general-purpose Linux distro with Kodi installed from the
 distro package.
 
 [Releases page]: https://github.com/jimmershere/radtv/releases
+## Migration from `badtv`
+R&Dtv now lives at `https://github.com/jimmershere/radtv`. The old `jimmershere/badtv` repository is private, archived, and retained only as historical/sunset state.
+If you have an existing checkout, repoint it before installing:
+```bash
+git remote set-url origin https://github.com/jimmershere/radtv.git
+git fetch origin
+```
+Kodi addon IDs also changed from `repository.badtv` / `script.badtv.wizard` to `repository.radtv` / `script.radtv.wizard`. Install the new repository zip and remove the old Kodi addons only after the R&Dtv wizard is working.
+Full migration notes: [`MIGRATION.md`](MIGRATION.md).
 
 ---
 
@@ -158,7 +167,7 @@ Credential handover is intentionally out-of-repo. The protected floor2 handover
 file is:
 
 ```
-/datapool/preserved/radtv-arr/jellyfin/rdtv-admin.json
+/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json
 ```
 
 That file must remain `0600` and should be retrieved only through a trusted SSH
