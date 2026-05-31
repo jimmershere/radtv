@@ -1,6 +1,6 @@
-# B@Dtv Addon List
+# R&Dtv Addon List
 
-The B@Dtv stack: shortest path to a loaded, modern Kodi install without
+The R&Dtv stack: shortest path to a loaded, modern Kodi install without
 collecting half-broken repos along the way.
 
 ## Quick reference
@@ -86,8 +86,8 @@ the addon ships from a third-party repo Kodi can't reach until you add it).
 ## Live TV and infrastructure
 
 ### PVR IPTV Simple Client
-- Kodi's official IPTV playlist client. **Must-install** for B@Dtv live TV.
-- Wizard pre-fills it with the bundled B@Dtv playlist + EPG.
+- Kodi's official IPTV playlist client. **Must-install** for R&Dtv live TV.
+- Wizard pre-fills it with the bundled R&Dtv playlist + EPG.
 
 ### A4K Subtitles
 - Subtitle search across multiple providers.
@@ -103,7 +103,7 @@ the addon ships from a third-party repo Kodi can't reach until you add it).
 ## Skin
 
 ### Arctic Zephyr Reloaded
-- Highly customizable, dark-friendly skin. B@Dtv ships a `badtv` color
+- Highly customizable, dark-friendly skin. R&Dtv ships a `radtv` color
   override that turns it into a Black Donnellys back-bar.
 - Alternative skin targets: Estuary MOD V2, stock Estuary. See
   [`../assets/skin/README.md`](../assets/skin/README.md).
@@ -134,7 +134,7 @@ Real-Debrid is the single biggest quality upgrade in this stack.
 6. Add third-party repo for Umbrella → install Umbrella → authorize
    Trakt + Real-Debrid in Umbrella
 7. Repeat (6) for Seren / Crew / FEN Light as wanted
-8. Wizard → **Apply B@Dtv theme to current skin**
+8. Wizard → **Apply R&Dtv theme to current skin**
 9. Wizard → **Add floor2 NFS media sources** (if applicable)
 10. Library → **Update library**
 
@@ -142,7 +142,7 @@ Real-Debrid is the single biggest quality upgrade in this stack.
 
 ## Operational note
 
-Third-party repositories move. B@Dtv handles this with a self-maintaining
+Third-party repositories move. R&Dtv handles this with a self-maintaining
 catalog: [`../addons/scraper-catalog.json`](../addons/scraper-catalog.json)
 is probed daily by [`../tools/refresh-scrapers.py`](../tools/refresh-scrapers.py)
 (via [`../.github/workflows/refresh-scrapers.yml`](../.github/workflows/refresh-scrapers.yml)),

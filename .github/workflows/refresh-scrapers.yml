@@ -45,10 +45,10 @@ jobs:
 
       - name: Commit and push if changed
         env:
-          GIT_AUTHOR_NAME: "B@Dtv catalog bot"
-          GIT_AUTHOR_EMAIL: "badtv-bot@users.noreply.github.com"
-          GIT_COMMITTER_NAME: "B@Dtv catalog bot"
-          GIT_COMMITTER_EMAIL: "badtv-bot@users.noreply.github.com"
+          GIT_AUTHOR_NAME: "R&Dtv catalog bot"
+          GIT_AUTHOR_EMAIL: "radtv-bot@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "R&Dtv catalog bot"
+          GIT_COMMITTER_EMAIL: "radtv-bot@users.noreply.github.com"
         run: |
           if git diff --quiet addons/scraper-catalog.json; then
             echo "No catalog changes."

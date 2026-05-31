@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""B@Dtv host-side bootstrap wizard.
+"""R&Dtv host-side bootstrap wizard.
 
 Single command, terminal TUI, walks the user from a fresh Linux box (or a
 laptop with Kodi already installed) all the way to a working Kodi launched
 in kiosk mode on the attached display.
 
 Usage:
-    ./badtv setup           # full guided run
-    ./badtv setup --resume  # pick up where the last run failed
-    ./badtv status          # show which steps are done
-    ./badtv launch          # just launch Kodi
-    ./badtv repair <step>   # re-run one specific step
+    ./radtv setup           # full guided run
+    ./radtv setup --resume  # pick up where the last run failed
+    ./radtv status          # show which steps are done
+    ./radtv launch          # just launch Kodi
+    ./radtv repair <step>   # re-run one specific step
 
-Idempotent: every step records itself in ~/.config/badtv/state.json so
-re-runs skip what's done. Verbose log at ~/.config/badtv/setup.log.
+Idempotent: every step records itself in ~/.config/radtv/state.json so
+re-runs skip what's done. Verbose log at ~/.config/radtv/setup.log.
 
 Designed to use ONLY Python stdlib so a fresh box can run it before any
 pip is installed. The wizard apt-installs python3-yaml itself if it needs
@@ -48,7 +48,7 @@ from xml.etree import ElementTree as ET
 
 VERSION = "3.1.0-fork"
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-STATE_DIR = os.path.expanduser("~/.config/badtv")
+STATE_DIR = os.path.expanduser("~/.config/radtv")
 STATE_PATH = os.path.join(STATE_DIR, "state.json")
 LOG_PATH = os.path.join(STATE_DIR, "setup.log")
 
@@ -145,7 +145,7 @@ DEBIAN_PROVIDED = {
     "pvr.iptvsimple", "pvr.hts", "vfs.libarchive",
 }
 SKIN_ID = "skin.arctic.zephyr.mod"
-SKIN_THEME_NAME = "badtv"
+SKIN_THEME_NAME = "radtv"
 SKIN_OVERRIDE_DIR_NAME = "arctic-zephyr-mod"
 
 # OAuth client ids -- these are public app identifiers used by the addons
@@ -196,7 +196,7 @@ JELLYFIN_KODI_DATADIR    = "https://repo.jellyfin.org/files/client/kodi/py3"
 JELLYFIN_KODI_ADDONS_XML = "https://repo.jellyfin.org/files/client/kodi/py3/addons.xml"
 JELLYFIN_KODI_PLUGIN_ID  = "plugin.video.jellyfin"
 
-USER_AGENT = f"B@Dtv-bootstrap/{VERSION}"
+USER_AGENT = f"R&Dtv-bootstrap/{VERSION}"
 HTTP_TIMEOUT = 20
 
 
@@ -257,7 +257,7 @@ def banner() -> None:
   | |_) | |_| | | || |\ V /|_|       host-side bootstrap
   |____/ \___/  |_||_| \_/ (_)
 """, color=Color.AMBER, bold=True)
-    cprint(f"  v{VERSION}   ·   docs: github.com/jimmershere/badtv\n",
+    cprint(f"  v{VERSION}   ·   docs: github.com/jimmershere/radtv\n",
            color=Color.GREY)
 
 
@@ -651,7 +651,7 @@ def vpn_expressvpn(state: Dict[str, Any]) -> bool:
                        check=False, capture_output=True)
         if not shutil.which("expressvpn"):
             err("install completed but `expressvpn` not on PATH")
-            err("Try: sudo apt-get install -f -y    then re-run `./badtv repair vpn`")
+            err("Try: sudo apt-get install -f -y    then re-run `./radtv repair vpn`")
             return False
         ok("ExpressVPN CLI installed")
         installed, activated, status_text = _expressvpn_status()
@@ -673,7 +673,7 @@ def vpn_expressvpn(state: Dict[str, Any]) -> bool:
         except subprocess.CalledProcessError as exc:
             err(f"activation failed (exit {exc.returncode}); "
                 "you can try `expressvpn activate` by hand then re-run "
-                "`./badtv repair vpn`")
+                "`./radtv repair vpn`")
             return False
         ok("activated")
     else:
@@ -691,7 +691,7 @@ def vpn_expressvpn(state: Dict[str, Any]) -> bool:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             err(f"connect failed: {exc}")
             err("Try: `expressvpn connect smart` by hand, then "
-                "`./badtv repair vpn` to verify")
+                "`./radtv repair vpn` to verify")
             return False
         ok("ExpressVPN connected")
     return True
@@ -740,13 +740,13 @@ def verify_exit_ip() -> None:
 
 
 def step_install_repo_addon(state: Dict[str, Any]) -> bool:
-    """Install the B@Dtv repository addon and wizard addon from local zips."""
-    header("Step 5 / 15  ·  B@Dtv addons (repository + wizard)")
+    """Install the R&Dtv repository addon and wizard addon from local zips."""
+    header("Step 5 / 15  ·  R&Dtv addons (repository + wizard)")
     # Auto-discover the current built zips so we don't have to chase
     # version-string bumps in two places.
     dist = os.path.join(REPO_ROOT, "dist")
     candidates = []
-    for prefix in ("repository.badtv-", "script.badtv.wizard-"):
+    for prefix in ("repository.radtv-", "script.radtv.wizard-"):
         matches = sorted(p for p in os.listdir(dist)
                          if p.startswith(prefix) and p.endswith(".zip")) \
                   if os.path.isdir(dist) else []
@@ -760,7 +760,7 @@ def step_install_repo_addon(state: Dict[str, Any]) -> bool:
             err("make repo failed")
             return False
         candidates = []
-        for prefix in ("repository.badtv-", "script.badtv.wizard-"):
+        for prefix in ("repository.radtv-", "script.radtv.wizard-"):
             matches = sorted(p for p in os.listdir(dist)
                              if p.startswith(prefix) and p.endswith(".zip"))
             if matches:
@@ -771,8 +771,8 @@ def step_install_repo_addon(state: Dict[str, Any]) -> bool:
         info(f"extracting {name} -> {KODI_ADDONS}")
         with zipfile.ZipFile(local) as zf:
             zf.extractall(KODI_ADDONS)
-    ok("B@Dtv repository + wizard addons installed")
-    mark_done(state, "badtv_addons")
+    ok("R&Dtv repository + wizard addons installed")
+    mark_done(state, "radtv_addons")
     return True
 
 
@@ -783,7 +783,7 @@ def step_install_official(state: Dict[str, Any]) -> bool:
     # If the addons already exist on disk from a prior run, the only thing
     # left to do is make sure they're enabled in Addons33.db. Skip the
     # network fetch entirely when nothing needs installing -- this keeps
-    # `./badtv repair install_official` working in the field even if
+    # `./radtv repair install_official` working in the field even if
     # mirrors.kodi.tv is unreachable.
     missing = [a for a in OFFICIAL_ADDONS
                if not os.path.isdir(os.path.join(KODI_ADDONS, a))]
@@ -883,7 +883,7 @@ def step_install_official(state: Dict[str, Any]) -> bool:
                 warn(f"dep {dep} failed: {exc}")
 
     if failed:
-        warn(f"failed: {', '.join(failed)} (re-run `./badtv repair install_official` later)")
+        warn(f"failed: {', '.join(failed)} (re-run `./radtv repair install_official` later)")
 
     # Pre-enable everything in OFFICIAL_ADDONS + the deps we just installed.
     # Same logic as step_grey_addons: Kodi 19+ disables third-party-repo
@@ -1141,7 +1141,7 @@ def step_grey_addons(state: Dict[str, Any]) -> bool:
 
     if overall_failures:
         warn(f"unresolved addons: {', '.join(sorted(set(overall_failures)))}")
-        warn("re-run `./badtv repair grey_addons` if upstream comes back, "
+        warn("re-run `./radtv repair grey_addons` if upstream comes back, "
              "or install by hand from the in-Kodi wizard.")
     else:
         ok("grey-area scraper stack installed in full")
@@ -1352,7 +1352,7 @@ def _kodi_db_enable(addon_ids: List[str]) -> None:
     os.makedirs(os.path.dirname(db), exist_ok=True)
     if _is_kodi_running():
         warn("Kodi is running -- can't safely patch Addons33.db. "
-             "Close Kodi and re-run `./badtv repair grey_addons`.")
+             "Close Kodi and re-run `./radtv repair grey_addons`.")
         return
     try:
         import sqlite3
@@ -1393,7 +1393,7 @@ def _kodi_db_enable(addon_ids: List[str]) -> None:
 # Defaults match the canonical TheClawFirm floor2 layout: ZFS pool `datapool`
 # with `/datapool/media/{movies,tv,music,downloads}`. Override via env
 # (FLOOR2_HOST, FLOOR2_USER, FLOOR2_REMOTE_PATH, FLOOR2_MOUNTPOINT) or by
-# editing config/badtv.conf before running setup.
+# editing config/radtv.conf before running setup.
 
 FLOOR2_DEFAULT_HOST = "192.168.1.206"
 FLOOR2_DEFAULT_USER = "floor2"
@@ -1478,7 +1478,7 @@ def step_floor2_mount(state: Dict[str, Any]) -> bool:
         warn(f"could not authorize key on {host}: {exc}")
         warn("manually copy ~/.ssh/floor2_mount.pub to "
              f"{user}@{host}:~/.ssh/authorized_keys, then re-run "
-             "`./badtv repair floor2`")
+             "`./radtv repair floor2`")
         return True   # non-blocking
 
     # 4. SSH config rule for the dedicated key
@@ -1510,13 +1510,13 @@ def step_floor2_mount(state: Dict[str, Any]) -> bool:
             ok(f"mounted: {mnt}")
         except subprocess.CalledProcessError as exc:
             warn(f"mount failed: {exc.stderr[:200] if hasattr(exc, 'stderr') and exc.stderr else exc}")
-            warn("re-run `./badtv repair floor2` once floor2 is reachable")
+            warn("re-run `./radtv repair floor2` once floor2 is reachable")
             return True
     else:
         ok(f"already mounted: {mnt}")
 
     # 7. write-test
-    test_path = os.path.join(mnt, "downloads", ".badtv-write-test")
+    test_path = os.path.join(mnt, "downloads", ".radtv-write-test")
     try:
         os.makedirs(os.path.dirname(test_path), exist_ok=True)
         with open(test_path, "w") as fh:
@@ -1681,7 +1681,7 @@ def _seed_library_scraper_assignments(mnt: str) -> None:
     if not os.path.isfile(db):
         # Kodi hasn't been launched yet — the DB is built on first launch.
         # We'll get a second chance via the launch step + a follow-up
-        # `./badtv repair floor2` re-run.
+        # `./radtv repair floor2` re-run.
         info("  MyVideos121.db not present yet (Kodi hasn't run) -- skip")
         return
     if _is_kodi_running():
@@ -1733,9 +1733,9 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     blips or RD changes API, Prowlarr keeps working on its own.
 
     Sets up:
-      * docker-compose stack at <floor2>:/datapool/preserved/badtv-arr/
-        with two containers: badtv-prowlarr (lscr.io/linuxserver/prowlarr)
-        + badtv-flaresolverr (Cloudflare bypass).
+      * docker-compose stack at <floor2>:/datapool/preserved/radtv-arr/
+        with two containers: radtv-prowlarr (lscr.io/linuxserver/prowlarr)
+        + radtv-flaresolverr (Cloudflare bypass).
       * Reads Prowlarr's auto-generated API key from its config.xml.
       * Registers FlareSolverr as Prowlarr's indexer-proxy.
       * Adds the indexers from the alive list (Knaben, LimeTorrents,
@@ -1752,21 +1752,21 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     if not run_ok(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
                    f"{floor2_user}@{floor2_host}", "true"]):
         warn(f"can't SSH to {floor2_user}@{floor2_host} -- skipping Prowlarr")
-        warn("re-run `./badtv repair prowlarr` once floor2 is reachable")
+        warn("re-run `./radtv repair prowlarr` once floor2 is reachable")
         return True
 
     # Verify docker is installed on floor2
     if not run_ok(["ssh", f"{floor2_user}@{floor2_host}",
                    "command -v docker"]):
         warn("Docker not installed on floor2 -- skipping Prowlarr")
-        warn("install Docker on floor2 then `./badtv repair prowlarr`")
+        warn("install Docker on floor2 then `./radtv repair prowlarr`")
         return True
 
-    info("deploying full arr+rdt stack at /datapool/preserved/badtv-arr/")
+    info("deploying full arr+rdt stack at /datapool/preserved/radtv-arr/")
     compose_yml = """services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
-    container_name: badtv-prowlarr
+    container_name: radtv-prowlarr
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes: [./prowlarr:/config]
@@ -1777,17 +1777,17 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
   # (anti-detection Firefox). Cloudflare's 2025-2026 challenge escalation has
   # made vanilla FlareSolverr unreliable; Byparr exposes the same JSON endpoint
   # on the same port so Prowlarr's existing "FlareSolverr" indexer-proxy entry
-  # continues to work pointing at host=http://badtv-byparr:8191/.
+  # continues to work pointing at host=http://radtv-byparr:8191/.
   byparr:
     image: ghcr.io/thephaseless/byparr:latest
-    container_name: badtv-byparr
+    container_name: radtv-byparr
     restart: unless-stopped
     environment: [LOG_LEVEL=info, TZ=America/New_York]
     ports: ["8191:8191"]
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
-    container_name: badtv-sonarr
+    container_name: radtv-sonarr
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes:
@@ -1798,7 +1798,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
-    container_name: badtv-radarr
+    container_name: radtv-radarr
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes:
@@ -1809,7 +1809,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
 
   rdt-client:
     image: rogerfar/rdtclient:latest
-    container_name: badtv-rdtclient
+    container_name: radtv-rdtclient
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes:
@@ -1824,7 +1824,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
   # all traffic flows through the VPN tunnel + dies if the tunnel does.
   gluetun:
     image: qmcgaw/gluetun:latest
-    container_name: badtv-gluetun
+    container_name: radtv-gluetun
     restart: unless-stopped
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun]
@@ -1845,7 +1845,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: badtv-qbittorrent
+    container_name: radtv-qbittorrent
     restart: unless-stopped
     network_mode: "service:gluetun"
     depends_on: [gluetun]
@@ -1864,7 +1864,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
   # Configured by step_usenet after the user provides NZBGeek + provider creds.
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
-    container_name: badtv-sabnzbd
+    container_name: radtv-sabnzbd
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes:
@@ -1872,13 +1872,13 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - /datapool/media/usenet:/downloads
     ports: ["8080:8080"]
 
-  # Jellyfin -- optional web/mobile frontend. Gated behind ./.badtv-jellyfin
+  # Jellyfin -- optional web/mobile frontend. Gated behind ./.radtv-jellyfin
   # marker (created by step_jellyfin when the user opts in). The container
   # definition stays in compose so a `docker compose up -d jellyfin` works
   # the moment the marker is touched.
   jellyfin:
     image: jellyfin/jellyfin:latest
-    container_name: badtv-jellyfin
+    container_name: radtv-jellyfin
     restart: unless-stopped
     profiles: ["jellyfin"]  # only starts when --profile jellyfin is passed
     user: "1000:1000"
@@ -1894,7 +1894,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
 
     env_template = """# Gluetun VPN credentials. Until these are filled, the gluetun
 # container will restart-loop and qBittorrent will have no network.
-# Edit this file in place, then: `cd /datapool/preserved/badtv-arr && docker compose up -d gluetun qbittorrent`
+# Edit this file in place, then: `cd /datapool/preserved/radtv-arr && docker compose up -d gluetun qbittorrent`
 
 # Recommended: Mullvad ($5/mo flat, WireGuard, sign up anonymously with cash).
 # Pull these two values from https://mullvad.net/account/wireguard-config
@@ -1922,12 +1922,12 @@ SERVER_CITIES=
 # OPENVPN_PASSWORD=
 
 # qBittorrent web-UI admin password (login as 'admin' with this):
-QBITTORRENT_PASSWORD=B@Dtv2026!
+QBITTORRENT_PASSWORD=R&Dtv2026!
 """
 
     setup_cmd = f"""
 set -e
-STACK=/datapool/preserved/badtv-arr
+STACK=/datapool/preserved/radtv-arr
 sudo mkdir -p $STACK/prowlarr $STACK/byparr $STACK/sonarr $STACK/radarr \\
               $STACK/rdt-client/data $STACK/gluetun $STACK/qbittorrent \\
               $STACK/sabnzbd $STACK/jellyfin \\
@@ -1956,7 +1956,7 @@ docker compose up -d
         time.sleep(2)
         cp = subprocess.run(
             ["ssh", f"{floor2_user}@{floor2_host}",
-             "sudo cat /datapool/preserved/badtv-arr/prowlarr/config.xml 2>/dev/null "
+             "sudo cat /datapool/preserved/radtv-arr/prowlarr/config.xml 2>/dev/null "
              "| grep -oP '(?<=<ApiKey>)[^<]+'"],
             capture_output=True, text=True, timeout=15)
         apikey = cp.stdout.strip()
@@ -1981,7 +1981,7 @@ docker compose up -d
         "configContract": "FlareSolverrSettings",
         "tags": [],
         "fields": [
-            {"name": "host", "value": "http://badtv-byparr:8191/"},
+            {"name": "host", "value": "http://radtv-byparr:8191/"},
             {"name": "requestTimeout", "value": 60},
         ],
     }
@@ -2037,7 +2037,7 @@ docker compose up -d
             time.sleep(2)
             cp = subprocess.run(
                 ["ssh", f"{floor2_user}@{floor2_host}",
-                 f"sudo cat /datapool/preserved/badtv-arr/{app}/config.xml "
+                 f"sudo cat /datapool/preserved/radtv-arr/{app}/config.xml "
                  "2>/dev/null | grep -oP '(?<=<ApiKey>)[^<]+'"],
                 capture_output=True, text=True, timeout=15)
             k = cp.stdout.strip()
@@ -2080,7 +2080,7 @@ docker compose up -d
             ok(f"  {label}: remote-path map already exists")
             continue
         res = _arr_api(url, key, "POST", "/api/v3/remotepathmapping",
-                       payload={"host": "badtv-rdtclient",
+                       payload={"host": "radtv-rdtclient",
                                 "remotePath": "/datapool/media/downloads/",
                                 "localPath":  "/media/downloads/"},
                        ignore_dupe=True)
@@ -2101,7 +2101,7 @@ docker compose up -d
             return None
         fields = sch.get("fields", [])
         values = {"baseUrl": base_url, "apiKey": api_key,
-                  "prowlarrUrl": f"http://badtv-prowlarr:9696",
+                  "prowlarrUrl": f"http://radtv-prowlarr:9696",
                   "syncCategories": categories}
         for f in fields:
             if f.get("name") in values:
@@ -2111,11 +2111,11 @@ docker compose up -d
 
     for app_name, app_payload in (
         ("Sonarr", _make_app("Sonarr", "Sonarr",
-                              "http://badtv-sonarr:8989", sona_key,
+                              "http://radtv-sonarr:8989", sona_key,
                               [5000, 5010, 5020, 5030, 5040, 5045, 5050, 5060,
                                5070, 5080])),
         ("Radarr", _make_app("Radarr", "Radarr",
-                              "http://badtv-radarr:7878", rada_key,
+                              "http://radtv-radarr:7878", rada_key,
                               [2000, 2010, 2020, 2030, 2040, 2045, 2050, 2060,
                                2070, 2080])),
     ):
@@ -2131,7 +2131,7 @@ docker compose up -d
             ok(f"  Prowlarr → {app_name}: linked (indexers will auto-sync)")
 
     # Configure rdt-client (admin user + RD API key + download paths)
-    rdt_user, rdt_pass = "jimmer", "B@Dtv2026!"  # TODO: random + persist
+    rdt_user, rdt_pass = "jimmer", "R&Dtv2026!"  # TODO: random + persist
     rdt_url = f"http://{floor2_host}:6500"
     info("configuring rdt-client...")
     rdt_jar = "/tmp/rdtcookies.txt"
@@ -2189,7 +2189,7 @@ docker compose up -d
             "implementation":     "QBittorrent",
             "configContract":     "QBittorrentSettings",
             "fields": [
-                {"name": "host", "value": "badtv-rdtclient"},
+                {"name": "host", "value": "radtv-rdtclient"},
                 {"name": "port", "value": 6500},
                 {"name": "useSsl", "value": False},
                 {"name": "urlBase", "value": ""},
@@ -2591,8 +2591,8 @@ def step_pvr(state: Dict[str, Any]) -> bool:
     os.makedirs(pvr_dir, exist_ok=True)
     path = os.path.join(pvr_dir, "settings.xml")
 
-    m3u = "https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.m3u"
-    epg = "https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.xml"
+    m3u = "https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.m3u"
+    epg = "https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.xml"
     info(f"M3U: {m3u}")
     info(f"EPG: {epg}")
 
@@ -2645,10 +2645,10 @@ def _patch_pvr_enabled(userdata: str) -> None:
 
 
 def step_skin(state: Dict[str, Any]) -> bool:
-    """Drop the B@Dtv color override into every installed skin that we
-    have a matching `colors/badtv.xml` for. Do NOT force-switch the active
+    """Drop the R&Dtv color override into every installed skin that we
+    have a matching `colors/radtv.xml` for. Do NOT force-switch the active
     skin -- let the user pick whichever skin they prefer on their display."""
-    header("Step 12 / 15  ·  B@Dtv color theme (skin-agnostic)")
+    header("Step 12 / 15  ·  R&Dtv color theme (skin-agnostic)")
 
     # Map skin_addon_id -> our override source dir name.
     skin_overrides = {
@@ -2663,24 +2663,24 @@ def step_skin(state: Dict[str, Any]) -> bool:
         if not os.path.isdir(skin_dir):
             continue
         src = os.path.join(REPO_ROOT, "build", "wizard", "resources", "skin",
-                           override_dir_name, "colors", "badtv.xml")
+                           override_dir_name, "colors", "radtv.xml")
         if not os.path.isfile(src):
             continue
         dst_dir = os.path.join(skin_dir, "colors")
         os.makedirs(dst_dir, exist_ok=True)
-        shutil.copy2(src, os.path.join(dst_dir, "badtv.xml"))
-        ok(f"copied B@Dtv color override into {skin_id}/colors/")
+        shutil.copy2(src, os.path.join(dst_dir, "radtv.xml"))
+        ok(f"copied R&Dtv color override into {skin_id}/colors/")
         applied.append(skin_id)
 
     if not applied:
-        info("no matching skin found on disk -- B@Dtv color overrides only "
+        info("no matching skin found on disk -- R&Dtv color overrides only "
              "exist for Arctic Zephyr (MOD / Reloaded) and Estuary (stock / MOD v2).")
         info("Whatever skin you've selected (estouchy, estuary, anything else) "
              "will keep its own colors; nothing here breaks it.")
 
     info("not auto-switching the active skin -- whatever you've selected "
          "in Settings > Interface > Skin stays.")
-    info("to use the B@Dtv colour theme: Settings > Skin > Colours > badtv "
+    info("to use the R&Dtv colour theme: Settings > Skin > Colours > radtv "
          "(only available if you pick one of the supported skins above).")
     mark_done(state, "skin", skin_overrides_applied=applied)
     return True
@@ -2746,7 +2746,7 @@ def step_realdebrid(state: Dict[str, Any]) -> bool:
         device = http_get_json(device_url)
     except Exception as exc:
         warn(f"could not start RD device flow: {exc}")
-        warn("you can re-run anytime with `./badtv repair realdebrid`")
+        warn("you can re-run anytime with `./radtv repair realdebrid`")
         mark_done(state, "realdebrid", realdebrid="error")
         return True   # non-blocking
     code = device.get("user_code", "?")
@@ -3028,7 +3028,7 @@ def _patch_addon_settings(addon_id: str, desired: Dict[str, str]) -> None:
 
 def step_trakt(state: Dict[str, Any]) -> bool:
     header("Step 14 / 15  ·  Trakt")
-    info("Trakt sync requires a registered Trakt OAuth app, which B@Dtv")
+    info("Trakt sync requires a registered Trakt OAuth app, which R&Dtv")
     info("doesn't ship one of (would require us to host client credentials).")
     info("")
     info("Easier path: when you install a scraper that supports Trakt")
@@ -3045,7 +3045,7 @@ def step_trakt(state: Dict[str, Any]) -> bool:
         device = http_post(TRAKT_DEVICE_URL, {"client_id": TRAKT_CLIENT_ID})
     except Exception as exc:
         warn(f"could not start Trakt device flow: {exc}")
-        warn("re-run later with `./badtv repair trakt`")
+        warn("re-run later with `./radtv repair trakt`")
         mark_done(state, "trakt", trakt="error")
         return True   # non-blocking
     code = device.get("user_code", "?")
@@ -3093,7 +3093,7 @@ def step_stream_test(state: Dict[str, Any]) -> bool:
         return True
     try:
         m3u = http_get(
-            "https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.m3u",
+            "https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.m3u",
             timeout=30,
         ).decode("utf-8", errors="replace")
     except Exception as exc:
@@ -3156,7 +3156,7 @@ def step_stream_test(state: Dict[str, Any]) -> bool:
 
     warn(f"None of {len(candidates)} US-region candidates played.")
     warn("Most likely cause: Spectrum (your ISP) is DPI-blocking IPTV.")
-    warn("Next step: ./badtv repair vpn   -- set up ExpressVPN to bypass.")
+    warn("Next step: ./radtv repair vpn   -- set up ExpressVPN to bypass.")
     mark_done(state, "stream_test", stream_test="all_failed")
     return True
 
@@ -3169,7 +3169,7 @@ def step_launch(state: Dict[str, Any]) -> bool:
     info("Launching kodi --standalone -fs ...")
     info("(close Kodi with the on-screen power menu, or `pkill kodi.bin`)")
     if not confirm("Launch Kodi now?", default=True):
-        info("Skipped launch. Run `./badtv launch` whenever you're ready.")
+        info("Skipped launch. Run `./radtv launch` whenever you're ready.")
         return True
     try:
         subprocess.Popen(["kodi", "--standalone", "-fs"],
@@ -3178,7 +3178,7 @@ def step_launch(state: Dict[str, Any]) -> bool:
                          start_new_session=True)
         ok("Kodi launched in standalone fullscreen.")
         info("First thing inside Kodi: Settings > Interface > Skin > "
-             "Arctic Zephyr Reloaded, then Settings > Skin > Colours > badtv.")
+             "Arctic Zephyr Reloaded, then Settings > Skin > Colours > radtv.")
     except Exception as exc:
         err(f"launch failed: {exc}")
         return False
@@ -3198,7 +3198,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
 
     This step is non-blocking: skipping it leaves the existing
     Real-Debrid + qBittorrent path untouched. Resume later via
-    `./badtv repair usenet` once credentials are in hand.
+    `./radtv repair usenet` once credentials are in hand.
     """
     header("New · Usenet (SABnzbd + NZB indexer + *arr clients)")
     if not confirm("Set up the Usenet path now? (needs a paid Usenet "
@@ -3214,7 +3214,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
     radarr_apikey   = state.get("vars", {}).get("radarr_apikey", "")
 
     if not prowlarr_apikey:
-        warn("Prowlarr API key not in state -- run `./badtv repair prowlarr` first")
+        warn("Prowlarr API key not in state -- run `./radtv repair prowlarr` first")
         return True
 
     # === credentials ====================================================
@@ -3240,7 +3240,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
     # === bring SABnzbd up ===============================================
     info("starting SABnzbd container on floor2...")
     if not run_ok(["ssh", f"{floor2_user}@{floor2_host}",
-                   "cd /datapool/preserved/badtv-arr && docker compose up -d sabnzbd"]):
+                   "cd /datapool/preserved/radtv-arr && docker compose up -d sabnzbd"]):
         warn("failed to start sabnzbd container")
         mark_done(state, "usenet", usenet="error")
         return True
@@ -3253,7 +3253,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
         time.sleep(2)
         cp = subprocess.run(
             ["ssh", f"{floor2_user}@{floor2_host}",
-             "sudo cat /datapool/preserved/badtv-arr/sabnzbd/sabnzbd.ini "
+             "sudo cat /datapool/preserved/radtv-arr/sabnzbd/sabnzbd.ini "
              "2>/dev/null | grep -E '^(api_key|nzb_key)' | head -2"],
             capture_output=True, text=True, timeout=15)
         for line in cp.stdout.splitlines():
@@ -3265,7 +3265,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
             break
     if not sab_apikey:
         warn("could not read SABnzbd API key; container may still be starting")
-        warn("re-run `./badtv repair usenet` in a minute")
+        warn("re-run `./radtv repair usenet` in a minute")
         return True
     ok(f"SABnzbd API key: {sab_apikey[:8]}...")
 
@@ -3341,7 +3341,7 @@ def step_usenet(state: Dict[str, Any]) -> bool:
             "implementation":     "Sabnzbd",
             "configContract":     "SabnzbdSettings",
             "fields": [
-                {"name": "host",      "value": "badtv-sabnzbd"},
+                {"name": "host",      "value": "radtv-sabnzbd"},
                 {"name": "port",      "value": 8080},
                 {"name": "apiKey",    "value": sab_apikey},
                 {"name": "username",  "value": ""},
@@ -3385,9 +3385,9 @@ def _jellyfin_auth_value(token: str = "") -> str:
     request. The token is omitted for the pre-auth startup-wizard calls and
     appended once AuthenticateByName hands one back."""
     parts = [
-        'MediaBrowser Client="B@Dtv"',
-        'Device="badtv-bootstrap"',
-        f'DeviceId="badtv-bootstrap-{platform.node() or "host"}"',
+        'MediaBrowser Client="R&Dtv"',
+        'Device="radtv-bootstrap"',
+        f'DeviceId="radtv-bootstrap-{platform.node() or "host"}"',
         f'Version="{VERSION}"',
     ]
     if token:
@@ -3435,7 +3435,7 @@ def _provision_jellyfin(base_url: str, admin_user: str, admin_pass: str,
     Returns {access_token, user_id, server_id, server_name, api_key} on
     success, or None. Idempotent: if the wizard is already complete it just
     re-authenticates with the supplied admin creds and reconciles libraries,
-    so `./badtv repair jellyfin` is safe to re-run."""
+    so `./radtv repair jellyfin` is safe to re-run."""
 
     # 1. wait for the server to answer /System/Info/Public (first boot can
     #    take a while -- Jellyfin unpacks ffmpeg + builds its DB).
@@ -3449,7 +3449,7 @@ def _provision_jellyfin(base_url: str, admin_user: str, admin_pass: str,
         warn("Jellyfin did not come up in time")
         return None
     server_id   = pub["Id"]
-    server_name = pub.get("ServerName") or "B@Dtv (floor2)"
+    server_name = pub.get("ServerName") or "R&Dtv (floor2)"
 
     # 2. first-run wizard -- only reachable WITHOUT auth while
     #    StartupWizardCompleted is false; skip it on a re-run.
@@ -3507,7 +3507,7 @@ def _provision_jellyfin(base_url: str, admin_user: str, admin_pass: str,
     # 6. mint a named API key (for state / external tooling -- the Kodi addon
     #    itself authenticates with the user token above, not this key).
     api_key = ""
-    appname = "B@Dtv-bootstrap"
+    appname = "R&Dtv-bootstrap"
     _jellyfin_api(base_url, "POST",
                   "/Auth/Keys?" + urllib.parse.urlencode({"app": appname}),
                   token=token)
@@ -3656,7 +3656,7 @@ def step_jellyfin(state: Dict[str, Any]) -> bool:
     lifetime hike + ending free remote streaming.
 
     Non-blocking: skip it and Kodi keeps working exactly as before. Resume
-    later via `./badtv repair jellyfin` (idempotent)."""
+    later via `./radtv repair jellyfin` (idempotent)."""
     header("New · Jellyfin (web/mobile frontend + native Kodi sync)")
     if not confirm("Bring up Jellyfin and wire it into Kodi?", default=False):
         info("skipped Jellyfin (Kodi remains the only frontend)")
@@ -3669,13 +3669,13 @@ def step_jellyfin(state: Dict[str, Any]) -> bool:
     base_url = f"http://{floor2_host}:{JELLYFIN_PORT}"
 
     section("Jellyfin admin account")
-    admin_user = v.get("jellyfin_user") or ask("admin username", default="badtv")
-    admin_pass = v.get("jellyfin_pass") or ask("admin password", default="B@Dtv2026!")
+    admin_user = v.get("jellyfin_user") or ask("admin username", default="radtv")
+    admin_pass = v.get("jellyfin_pass") or ask("admin password", default="R&Dtv2026!")
 
     # 1. start the container; ensure the library roots exist on floor2 first.
     info("starting jellyfin container on floor2 (profile: jellyfin)...")
     start_cmd = (
-        "cd /datapool/preserved/badtv-arr && "
+        "cd /datapool/preserved/radtv-arr && "
         "sudo mkdir -p /datapool/media/movies /datapool/media/tv && "
         "docker compose --profile jellyfin up -d jellyfin")
     if not run_ok(["ssh", f"{floor2_user}@{floor2_host}", start_cmd]):
@@ -3690,7 +3690,7 @@ def step_jellyfin(state: Dict[str, Any]) -> bool:
                                "/media/movies", "/media/tv")
     if not prov:
         warn("Jellyfin provisioning incomplete -- finish setup at "
-             f"{base_url} by hand, then re-run `./badtv repair jellyfin`")
+             f"{base_url} by hand, then re-run `./radtv repair jellyfin`")
         mark_done(state, "jellyfin", jellyfin="container-only",
                   jellyfin_url=base_url, jellyfin_user=admin_user,
                   jellyfin_pass=admin_pass)
@@ -3723,7 +3723,7 @@ def step_cleanup(state: Dict[str, Any]) -> bool:
     What gets removed (each is no-op if absent):
       * plugin.video.thecrew + repository.thecrew -- zombie since mid-2025
       * plugin.video.crackle (any leftover from pre-2026-05-24 bootstrap)
-      * badtv-flaresolverr container (now replaced by badtv-byparr in the
+      * radtv-flaresolverr container (now replaced by radtv-byparr in the
         compose; the orphaned container would otherwise hold port 8191)
     """
     header("New · Cleanup (prune dead addons + replaced containers)")
@@ -3760,13 +3760,13 @@ def step_cleanup(state: Dict[str, Any]) -> bool:
                f"{floor2_user}@{floor2_host}", "true"]):
         cp = subprocess.run(
             ["ssh", f"{floor2_user}@{floor2_host}",
-             "docker ps -a --format '{{.Names}}' | grep -x badtv-flaresolverr || true"],
+             "docker ps -a --format '{{.Names}}' | grep -x radtv-flaresolverr || true"],
             capture_output=True, text=True, timeout=15)
-        if "badtv-flaresolverr" in cp.stdout:
+        if "radtv-flaresolverr" in cp.stdout:
             if run_ok(["ssh", f"{floor2_user}@{floor2_host}",
-                       "docker rm -f badtv-flaresolverr"]):
-                ok("  removed orphaned badtv-flaresolverr container")
-                pruned.append("badtv-flaresolverr")
+                       "docker rm -f radtv-flaresolverr"]):
+                ok("  removed orphaned radtv-flaresolverr container")
+                pruned.append("radtv-flaresolverr")
 
     if not pruned:
         ok("nothing to clean up (already pruned)")
@@ -3781,7 +3781,7 @@ STEPS: List[Tuple[str, Callable[[Dict[str, Any]], bool]]] = [
     ("apt",                 step_apt),
     ("kodi_userdata",       step_kodi_userdata),
     ("vpn",                 step_vpn),
-    ("badtv_addons",        step_install_repo_addon),
+    ("radtv_addons",        step_install_repo_addon),
     ("install_official",    step_install_official),
     ("grey_addons",         step_grey_addons),
     ("cleanup",             step_cleanup),        # v3: prune zombies (The Crew etc.)
@@ -3826,19 +3826,19 @@ def cmd_setup(args: argparse.Namespace) -> int:
                 return 1
             if not ok_:
                 err(f"step {step_id} reported failure -- stopping.")
-                err("Resume after fixing with: ./badtv setup --resume")
+                err("Resume after fixing with: ./radtv setup --resume")
                 return 1
     finally:
         if keepalive is not None:
             keepalive.terminate()
-    cprint("\n  All steps done. Enjoy B@Dtv.\n",
+    cprint("\n  All steps done. Enjoy R&Dtv.\n",
            color=Color.GREEN, bold=True)
     return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
     state = load_state()
-    cprint("B@Dtv setup status:", color=Color.AMBER, bold=True)
+    cprint("R&Dtv setup status:", color=Color.AMBER, bold=True)
     print()
     for step_id, _ in STEPS:
         done = is_done(state, step_id)
@@ -3870,7 +3870,7 @@ def cmd_repair(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    p = argparse.ArgumentParser(prog="badtv", description="B@Dtv host-side wizard")
+    p = argparse.ArgumentParser(prog="radtv", description="R&Dtv host-side wizard")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp_setup = sub.add_parser("setup", help="run the full guided setup")
@@ -3887,7 +3887,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     sp_launch.set_defaults(func=cmd_launch)
 
     sp_repair = sub.add_parser("repair", help="re-run one specific step")
-    sp_repair.add_argument("step", help="step id (see `./badtv status`)")
+    sp_repair.add_argument("step", help="step id (see `./radtv status`)")
     sp_repair.set_defaults(func=cmd_repair)
 
     args = p.parse_args(argv)

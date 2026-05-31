@@ -1,5 +1,5 @@
 # R&Dtv Jellyfin deployment
-This document records the 2026 Jellyfin deployment for the R&Dtv / B@Dtv stack on `floor2`.
+This document records the 2026 Jellyfin deployment for the R&Dtv / legacy floor2 stack on `floor2`.
 ## Role in the architecture
 Jellyfin is the owned-library frontend for the *arr-managed media library. Kodi remains the lean local-TV and scraper frontend, while Jellyfin gives browser, mobile, Roku, Apple TV, Android TV, and DLNA-style access to the same canonical media tree.
 The intended shape is:
@@ -20,6 +20,8 @@ Reference host:
 - Image: `jellyfin/jellyfin:latest`
 - Public LAN URL: `http://192.168.1.206:8096`
 - Optional HTTPS port mapping: `8920`
+The floor2 compose path and container names still use the pre-rebrand `badtv` operational prefix because they refer to the already-provisioned server. The GitHub product/repository name is now `radtv`.
+
 The override adds Jellyfin without replacing the existing *arr stack. It mounts:
 - `./jellyfin/config` → `/config`
 - `./jellyfin/cache` → `/cache`
@@ -75,7 +77,7 @@ ssh floor2@192.168.1.206 'tar -C /datapool/preserved/badtv-arr -czf jellyfin-con
 ## Kodi integration
 The bootstrap contains support for installing and pre-seeding `plugin.video.jellyfin` so Kodi can sync Jellyfin’s owned library into Kodi’s local video database. That path is still intended to be driven by:
 ```
-./badtv repair jellyfin
+./radtv repair jellyfin
 ```
 If the plugin schema changes upstream, the fallback is manual pairing in Kodi:
 1. Install the Jellyfin Kodi repository.

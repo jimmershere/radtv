@@ -1,11 +1,11 @@
-# B@Dtv Setup Guide
+# R&Dtv Setup Guide
 
 The wizard automates most of the setup; this is the human-readable version
 of what it's doing so you can override or skip selectively.
 
 ## What the wizard installs (official)
 
-1. **PVR IPTV Simple Client** — live TV engine. Required for the B@Dtv
+1. **PVR IPTV Simple Client** — live TV engine. Required for the R&Dtv
    playlist.
 2. **YouTube** — official YouTube playback.
 3. **A4K Subtitles** — subtitle search.
@@ -63,7 +63,7 @@ every supported addon and every device.
 The wizard's "Configure PVR IPTV Simple Client" action does these in one shot:
 
 1. Writes `userdata/addon_data/pvr.iptvsimple/settings.xml` with
-   `m3uUrl` + `epgUrl` pointing at the bundled B@Dtv playlist.
+   `m3uUrl` + `epgUrl` pointing at the bundled R&Dtv playlist.
 2. Enables PVR IPTV Simple Client.
 3. Triggers Kodi to load the playlist.
 
@@ -94,7 +94,7 @@ For best library scraping:
 
 ## Theme
 
-Wizard → **Apply B@Dtv theme to current skin**. The wizard copies a colors
+Wizard → **Apply R&Dtv theme to current skin**. The wizard copies a colors
 XML override into the active skin's `colors/` directory and selects it. To
 revert: **Settings → Skin → Colours →** pick the skin's original theme.
 

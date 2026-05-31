@@ -1,9 +1,9 @@
 # NOTICE — Third-Party Trademarks, Copyrights, and Acknowledgments
 
-B@Dtv is software that documents, configures, and interoperates with many
+R&Dtv is software that documents, configures, and interoperates with many
 third-party services and projects. The trademarks, service marks, product
 names, and logos referenced below are the property of their respective
-owners. Their use in B@Dtv is for **identification only** and does not
+owners. Their use in R&Dtv is for **identification only** and does not
 imply affiliation, sponsorship, or endorsement.
 
 ---
@@ -13,9 +13,9 @@ imply affiliation, sponsorship, or endorsement.
 | Mark / Project              | Owner                                              | Used to describe                                  |
 | --------------------------- | -------------------------------------------------- | ------------------------------------------------- |
 | **Kodi™**, **XBMC™**        | XBMC Foundation                                    | Target media-player platform.                     |
-| **Estuary**, **Estuary MOD V2**, **Arctic Zephyr Reloaded** | Their respective skin authors             | Skins B@Dtv ships color overrides for.            |
-| **PVR IPTV Simple Client**  | Kodi maintainers                                   | The Kodi PVR client B@Dtv configures.             |
-| **A4K Subtitles**           | a4k-openproject                                    | Subtitle addon B@Dtv installs.                    |
+| **Estuary**, **Estuary MOD V2**, **Arctic Zephyr Reloaded** | Their respective skin authors             | Skins R&Dtv ships color overrides for.            |
+| **PVR IPTV Simple Client**  | Kodi maintainers                                   | The Kodi PVR client R&Dtv configures.             |
+| **A4K Subtitles**           | a4k-openproject                                    | Subtitle addon R&Dtv installs.                    |
 | **URLResolver**, **ResolveURL** | Their respective maintainers                  | Link-unrestriction modules referenced.            |
 
 ## Streaming-service trademarks
@@ -38,13 +38,13 @@ imply affiliation, sponsorship, or endorsement.
 
 | Mark                         | Owner                          | Used to describe                                                                                  |
 | ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **The Black Donnellys**      | NBCUniversal Media, LLC        | Stylistic and thematic *inspiration* for B@Dtv's UI palette. B@Dtv is not affiliated with NBCU.   |
+| **The Black Donnellys**      | NBCUniversal Media, LLC        | Stylistic and thematic *inspiration* for R&Dtv's UI palette. R&Dtv is not affiliated with NBCU.   |
 | **Hell's Kitchen** (place)   | The neighborhood in Manhattan  | Used as a stylistic reference; no commercial mark involved.                                       |
 
 ## Open-source dependencies
 
-The following open-source projects are used or referenced by B@Dtv. Each
-remains under its original license; B@Dtv neither owns nor relicenses
+The following open-source projects are used or referenced by R&Dtv. Each
+remains under its original license; R&Dtv neither owns nor relicenses
 their code.
 
 - **Kodi** (XBMC Foundation) — GPL-2.0-or-later.
@@ -61,9 +61,9 @@ their code.
 
 ## Third-party Kodi addon authors
 
-The following addon authors are credited for the work B@Dtv references
+The following addon authors are credited for the work R&Dtv references
 through its scraper catalog ([`addons/scraper-catalog.json`](addons/scraper-catalog.json)).
-B@Dtv does **not** redistribute, fork, mirror, or modify any of these
+R&Dtv does **not** redistribute, fork, mirror, or modify any of these
 addons; the catalog only documents publicly-listed repo URLs so users can
 locate the addons themselves.
 
@@ -74,7 +74,7 @@ locate the addons themselves.
 - Venom, Asgard — kodiversum
 - Homelander — kodi-community-repos
 
-Each addon ships under its author's own license. B@Dtv does not claim any
+Each addon ships under its author's own license. R&Dtv does not claim any
 right in or to those addons.
 
 ## Fonts referenced
@@ -83,12 +83,12 @@ right in or to those addons.
 - **Inter** (Rasmus Andersson) — SIL Open Font License 1.1.
 - **JetBrains Mono** (JetBrains) — SIL Open Font License 1.1.
 
-B@Dtv does not bundle font files; it references the families by name so
+R&Dtv does not bundle font files; it references the families by name so
 they apply if installed on the rendering system.
 
 ## Reporting
 
 If a name in this file is misattributed, missing, or referenced in a way
 the rights holder objects to, please open an issue at
-<https://github.com/jimmershere/badtv/issues> with subject
+<https://github.com/jimmershere/radtv/issues> with subject
 `NOTICE: <mark>` and the maintainers will correct it.

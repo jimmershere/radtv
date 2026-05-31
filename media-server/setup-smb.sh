@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# B@Dtv Samba setup for floor2 (or whichever NAS you point it at).
-# Reads config from config/badtv.conf with config/badtv.conf.example as
+# R&Dtv Samba setup for floor2 (or whichever NAS you point it at).
+# Reads config from config/radtv.conf with config/radtv.conf.example as
 # defaults. Run as root on the NAS box.
 set -euo pipefail
 

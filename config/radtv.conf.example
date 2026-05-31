@@ -1,23 +1,23 @@
-# B@Dtv configuration
-# Copy this file to `config/badtv.conf` and edit. install.sh and the
-# media-server scripts read from `config/badtv.conf` if present, otherwise
+# R&Dtv configuration
+# Copy this file to `config/radtv.conf` and edit. install.sh and the
+# media-server scripts read from `config/radtv.conf` if present, otherwise
 # fall back to these defaults.
 #
 # Syntax: plain shell. Variables are exported by `config/load.sh`.
 
 # --- Branding -----------------------------------------------------------------
-BADTV_NAME="B@Dtv"
-BADTV_VERSION="2.0.0"
-BADTV_REPO_OWNER="jimmershere"
-BADTV_REPO_NAME="badtv"
-BADTV_REPO_URL="https://github.com/${BADTV_REPO_OWNER}/${BADTV_REPO_NAME}"
-BADTV_REPO_RAW_URL="https://raw.githubusercontent.com/${BADTV_REPO_OWNER}/${BADTV_REPO_NAME}/main"
+RADTV_NAME="R&Dtv"
+RADTV_VERSION="2.0.0"
+RADTV_REPO_OWNER="jimmershere"
+RADTV_REPO_NAME="radtv"
+RADTV_REPO_URL="https://github.com/${RADTV_REPO_OWNER}/${RADTV_REPO_NAME}"
+RADTV_REPO_RAW_URL="https://raw.githubusercontent.com/${RADTV_REPO_OWNER}/${RADTV_REPO_NAME}/main"
 
 # --- Media server (floor2 by default) -----------------------------------------
 # The local-network NAS where movies/TV/music live. NFS exports + Samba shares
 # get configured against this host.
 FLOOR2_HOST="192.168.1.206"
-FLOOR2_USER="badtv"
+FLOOR2_USER="radtv"
 FLOOR2_ZFS_POOL="datapool"
 FLOOR2_ZFS_DATASET="${FLOOR2_ZFS_POOL}/media"
 FLOOR2_MOUNTPOINT="/media"
@@ -30,7 +30,7 @@ FLOOR2_NFS_CLIENT_SPEC="192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)"
 KODI_USERDATA=""
 
 # --- IPTV ---------------------------------------------------------------------
-# The IPTV builder pulls these into iptv/dist/badtv.m3u + badtv.xml. Detailed
+# The IPTV builder pulls these into iptv/dist/radtv.m3u + radtv.xml. Detailed
 # source list lives in iptv/sources.yaml -- this just toggles broad categories.
 IPTV_INCLUDE_US_FREE=1
 IPTV_INCLUDE_INTERNATIONAL=1
@@ -48,6 +48,6 @@ ENABLE_EASYNEWS=0
 ENABLE_PREMIUMIZE=0
 
 # --- Skin ---------------------------------------------------------------------
-# Which skin to apply the B@Dtv color override against.
+# Which skin to apply the R&Dtv color override against.
 # Valid: "arctic-zephyr-reloaded" | "estuary-mod-v2" | "estuary" | "none"
-BADTV_SKIN_TARGET="arctic-zephyr-reloaded"
+RADTV_SKIN_TARGET="arctic-zephyr-reloaded"

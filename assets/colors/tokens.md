@@ -1,10 +1,10 @@
-# B@Dtv color tokens
+# R&Dtv color tokens
 
 Hell's Kitchen at 2 AM: dim back-bar lamps, brick, brass, whiskey, the green
 of an old Tiffany shade, parchment under coffee rings. **The Black Donnellys**
 without the romance — gritty, warm where it counts, cold where it has to be.
 
-The tokens below drive every B@Dtv surface: the addon icons, the wizard
+The tokens below drive every R&Dtv surface: the addon icons, the wizard
 splash, and the color XML overrides for Arctic Zephyr Reloaded / Estuary MOD
 V2 / stock Estuary.
 
@@ -31,7 +31,7 @@ V2 / stock Estuary.
 - Body / UI: **Inter** (clean, screen-friendly). Fallback: `sans-serif`.
 - Mono (debug, file paths, EPG times): **JetBrains Mono**.
 
-## "B@Dtv" wordmark rules
+## "R&Dtv" wordmark rules
 
 - **B**, **D**, **t**, **v** in `parchment`, weight 700, Cinzel.
 - **@** in `whiskey.amber`, rotated ~6° clockwise so it reads as a brand

@@ -1,4 +1,4 @@
-# `iptv/` — B@Dtv live TV pipeline
+# `iptv/` — R&Dtv live TV pipeline
 
 Pulls a list of public M3U + XMLTV sources, merges them into a single
 deduped playlist with EPG, and writes the result to `iptv/dist/`. The Kodi
@@ -10,8 +10,8 @@ wizard points PVR IPTV Simple Client at the resulting URL (or a local file).
 | --------------------- | -------------------------------------------------------------------- |
 | `sources.yaml`        | Canonical, declarative source list. Enable/disable per source.       |
 | `build-playlist.py`   | Fetch + merge runner. Stdlib + PyYAML.                               |
-| `dist/badtv.m3u`      | Built playlist (gitignored).                                         |
-| `dist/badtv.xml`      | Built XMLTV EPG (gitignored).                                        |
+| `dist/radtv.m3u`      | Built playlist (gitignored).                                         |
+| `dist/radtv.xml`      | Built XMLTV EPG (gitignored).                                        |
 
 ## Build
 
@@ -27,7 +27,7 @@ Useful flags:
 python3 iptv/build-playlist.py --dry-run                   # parse only
 python3 iptv/build-playlist.py --only-category us_free     # one slice
 python3 iptv/build-playlist.py --skip-id iptv-org-index    # skip the big one
-python3 iptv/build-playlist.py --epg-url https://my.host/badtv.xml
+python3 iptv/build-playlist.py --epg-url https://my.host/radtv.xml
 ```
 
 ## What's included by default
@@ -64,8 +64,8 @@ That's it — next `make iptv` picks it up.
 
 ## Legal note
 
-B@Dtv ships only **lawful free/ad-supported sources** and the user's own
+R&Dtv ships only **lawful free/ad-supported sources** and the user's own
 playlists. Paid IPTV resellers and pirate aggregators stay out of
 `sources.yaml`. If you maintain a private playlist for premium TV
 Everywhere streams you have authenticated access to, drop it in
-`config/badtv.conf` and point PVR IPTV Simple Client at that URL instead.
+`config/radtv.conf` and point PVR IPTV Simple Client at that URL instead.

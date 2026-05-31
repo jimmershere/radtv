@@ -8,18 +8,18 @@ goes "Bad token" and Radarr/Sonarr grabs stop landing.
 This script:
   1. Reads the OAuth refresh_token + client_id + client_secret from
      script.module.resolveurl/settings.xml (the canonical source the
-     B@Dtv bootstrap writes).
+     R&Dtv bootstrap writes).
   2. Calls RD's /oauth/v2/token endpoint with grant_type=device to mint
      a fresh access_token.
   3. Writes the new access (and rotated refresh) into:
        * ResolveURL settings.xml
        * Umbrella, Seren, POV settings.xml
        * rdt-client (via its REST API on floor2)
-       * ~/.config/badtv/state.json
-  4. Logs to ~/.config/badtv/rd-refresh.log
+       * ~/.config/radtv/state.json
+  4. Logs to ~/.config/radtv/rd-refresh.log
 
 Run daily via cron:
-    0 5 * * * /app/badtv/tools/rd-refresh.py
+    0 5 * * * /app/radtv/tools/rd-refresh.py
 
 Manual run:
     ./tools/rd-refresh.py [--dry-run]
@@ -40,8 +40,8 @@ from typing import Dict, Optional, Tuple
 
 HOME           = os.path.expanduser("~")
 KODI_USERDATA  = os.path.join(HOME, ".kodi", "userdata")
-STATE_PATH     = os.path.join(HOME, ".config", "badtv", "state.json")
-LOG_PATH       = os.path.join(HOME, ".config", "badtv", "rd-refresh.log")
+STATE_PATH     = os.path.join(HOME, ".config", "radtv", "state.json")
+LOG_PATH       = os.path.join(HOME, ".config", "radtv", "rd-refresh.log")
 RU_SETTINGS    = os.path.join(KODI_USERDATA, "addon_data",
                               "script.module.resolveurl", "settings.xml")
 RD_TOKEN_URL   = "https://api.real-debrid.com/oauth/v2/token"
@@ -49,7 +49,7 @@ RD_USER_URL    = "https://api.real-debrid.com/rest/1.0/user"
 FLOOR2_HOST    = "192.168.1.206"
 FLOOR2_USER    = "floor2"
 RDT_USER       = "jimmer"
-RDT_PASS       = "B@Dtv2026!"
+RDT_PASS       = "R&Dtv2026!"
 
 
 def log(msg: str) -> None:
@@ -146,7 +146,7 @@ def patch_rdt_client(access: str, dry: bool=False) -> None:
     log(f"  - rdt-client: Provider:ApiKey updated ({(r.stdout or '(empty body = ok)')[:60]})")
     # Restart so background worker picks up the new token. Without this,
     # rdt-client keeps using the cached old token until next compose restart.
-    subprocess.run(ssh + ["docker restart badtv-rdtclient >/dev/null 2>&1"],
+    subprocess.run(ssh + ["docker restart radtv-rdtclient >/dev/null 2>&1"],
                    check=False, timeout=20)
     log("  - rdt-client: container restarted to reload provider config")
 
@@ -178,7 +178,7 @@ def main() -> int:
     access_old, refresh, cid, csec = read_resolveurl_creds()
     if not (refresh and cid and csec):
         log("ERR: missing refresh/client_id/client_secret in ResolveURL settings.xml")
-        log("     run `./badtv repair realdebrid` to re-authorize from a keyboard")
+        log("     run `./radtv repair realdebrid` to re-authorize from a keyboard")
         return 1
 
     log(f"current token: {access_old[:10]}... (verifying)")
@@ -201,7 +201,7 @@ def main() -> int:
         tok = refresh_rd(cid, csec, refresh)
     except urllib.error.HTTPError as e:
         log(f"ERR: RD refresh failed: HTTP {e.code} {e.read().decode()[:200]}")
-        log("     the refresh_token is also dead; re-auth via `./badtv repair realdebrid`")
+        log("     the refresh_token is also dead; re-auth via `./radtv repair realdebrid`")
         return 1
 
     access_new  = tok.get("access_token", "")

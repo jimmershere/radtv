@@ -1,17 +1,17 @@
-"""B@Dtv in-Kodi wizard -- maintenance-mode menu.
+"""R&Dtv in-Kodi wizard -- maintenance-mode menu.
 
 First-run setup (install Kodi binary addons, VPN, addon downloads, PVR
 config, OAuth, skin theme) is done by the HOST-SIDE bootstrap script
-(`./badtv setup` in the repo). The in-Kodi wizard is intentionally
+(`./radtv setup` in the repo). The in-Kodi wizard is intentionally
 narrower now: it surfaces the runtime maintenance actions that make
 sense to do from the couch with a remote -- catalog refresh, anonymizer
 status check, library scan, theme reapply, NAS sources, third-party
 scraper installs from the live catalog.
 
-If you're seeing this menu and B@Dtv isn't set up yet, run on your
+If you're seeing this menu and R&Dtv isn't set up yet, run on your
 laptop:
 
-    ./badtv setup
+    ./radtv setup
 
 (the README has the full walk-through). Everything in this menu assumes
 the host-side bootstrap has already done the heavy lifting.
@@ -39,11 +39,11 @@ def _menu() -> List[MenuItem]:
          actions.check_anonymizer_status),
         ("Add floor2 NFS media sources to Kodi",
          actions.add_floor2_sources),
-        ("Apply B@Dtv theme to current skin",
-         actions.apply_badtv_theme),
+        ("Apply R&Dtv theme to current skin",
+         actions.apply_radtv_theme),
         ("Run library scan now",
          actions.run_library_scan),
-        ("About B@Dtv",
+        ("About R&Dtv",
          actions.show_about),
     ]
 
@@ -52,7 +52,7 @@ def run() -> int:
     while True:
         items = _menu()
         labels = [label for label, _ in items] + ["Exit"]
-        choice = ku.select("B@Dtv Wizard  -  maintenance mode", labels)
+        choice = ku.select("R&Dtv Wizard  -  maintenance mode", labels)
         if choice is None or choice == len(items):
             return 0
         label, fn = items[choice]

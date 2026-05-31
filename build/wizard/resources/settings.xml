@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings version="1">
-  <section id="badtv">
+  <section id="radtv">
 
     <category id="general" label="General">
       <group id="1" label="Branding">
-        <setting id="badtv_repo_raw_url" type="string" label="B@Dtv repo raw URL" help="Where the wizard fetches the bundled IPTV playlist + EPG from.">
+        <setting id="radtv_repo_raw_url" type="string" label="R&amp;Dtv repo raw URL" help="Where the wizard fetches the bundled IPTV playlist + EPG from.">
           <level>0</level>
-          <default>https://raw.githubusercontent.com/jimmershere/badtv/main</default>
+          <default>https://raw.githubusercontent.com/jimmershere/radtv/main</default>
           <constraints>
             <allowempty>false</allowempty>
           </constraints>
           <control type="edit" format="string">
-            <heading>B@Dtv repo raw URL</heading>
+            <heading>R&amp;Dtv repo raw URL</heading>
           </control>
         </setting>
       </group>
@@ -38,7 +38,7 @@
 
     <category id="iptv" label="Live TV (PVR IPTV Simple)">
       <group id="1" label="Playlist + EPG">
-        <setting id="iptv_m3u_url" type="string" label="M3U URL (override)" help="Leave blank to use the bundled B@Dtv playlist.">
+        <setting id="iptv_m3u_url" type="string" label="M3U URL (override)" help="Leave blank to use the bundled R&amp;Dtv playlist.">
           <level>0</level>
           <default></default>
           <constraints>
@@ -63,7 +63,7 @@
 
     <category id="theme" label="Theme">
       <group id="1" label="Skin">
-        <setting id="badtv_skin_target" type="string" label="Skin to theme" help="Picks which skin's colors/ dir to drop the B@Dtv color override into. Set to 'none' to skip.">
+        <setting id="radtv_skin_target" type="string" label="Skin to theme" help="Picks which skin's colors/ dir to drop the R&amp;Dtv color override into. Set to 'none' to skip.">
           <level>0</level>
           <default>arctic-zephyr-mod</default>
           <constraints>

@@ -1,10 +1,10 @@
-## B@Dtv Wizard — English (UK) strings
+## R&Dtv Wizard — English (UK) strings
 ## ID range 30000-30999 reserved for the wizard.
 
 msgid ""
 msgstr ""
-"Project-Id-Version: B@Dtv Wizard\n"
-"Report-Msgid-Bugs-To: https://github.com/jimmershere/badtv/issues\n"
+"Project-Id-Version: R&Dtv Wizard\n"
+"Report-Msgid-Bugs-To: https://github.com/jimmershere/radtv/issues\n"
 "PO-Revision-Date: 2026-05-23\n"
 "Language: en_GB\n"
 "MIME-Version: 1.0\n"
@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 msgctxt "#30000"
-msgid "B@Dtv Wizard"
+msgid "R&Dtv Wizard"
 msgstr ""
 
 msgctxt "#30001"
@@ -40,7 +40,7 @@ msgid "Add floor2 NFS media sources"
 msgstr ""
 
 msgctxt "#30007"
-msgid "Apply B@Dtv theme"
+msgid "Apply R&Dtv theme"
 msgstr ""
 
 msgctxt "#30008"
@@ -48,5 +48,5 @@ msgid "Run library scan"
 msgstr ""
 
 msgctxt "#30009"
-msgid "About B@Dtv"
+msgid "About R&Dtv"
 msgstr ""

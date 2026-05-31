@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Merge B@Dtv IPTV sources into a single M3U + XMLTV.
+"""Merge R&Dtv IPTV sources into a single M3U + XMLTV.
 
 Reads iptv/sources.yaml, fetches each enabled M3U and EPG, dedupes channels
 by tvg-id (falling back to channel name), and writes:
 
-    iptv/dist/badtv.m3u
-    iptv/dist/badtv.xml
+    iptv/dist/radtv.m3u
+    iptv/dist/radtv.xml
 
 Run from the repo root:
 
@@ -44,7 +44,7 @@ DIST_DIR = os.path.join(ROOT, "dist")
 SOURCES_YAML = os.path.join(ROOT, "sources.yaml")
 
 HTTP_TIMEOUT = 30
-USER_AGENT = "B@Dtv-IPTV-Builder/2.0 (+https://github.com/jimmershere/badtv)"
+USER_AGENT = "R&Dtv-IPTV-Builder/2.0 (+https://github.com/jimmershere/radtv)"
 
 
 @dataclass
@@ -149,7 +149,7 @@ def merge_xmltv(blobs: List[bytes], keep_tvg_ids: Set[str]) -> bytes:
     keep_tvg_ids comparison is case-insensitive. If keep_tvg_ids is empty all
     channels are kept (useful for debug runs).
     """
-    out = ET.Element("tv", attrib={"generator-info-name": "B@Dtv-IPTV-Builder"})
+    out = ET.Element("tv", attrib={"generator-info-name": "R&Dtv-IPTV-Builder"})
     seen_channels: Set[str] = set()
 
     keep = {k.lower() for k in keep_tvg_ids} if keep_tvg_ids else set()
@@ -194,7 +194,7 @@ def load_sources() -> List[dict]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Build B@Dtv merged IPTV playlist.")
+    parser = argparse.ArgumentParser(description="Build R&Dtv merged IPTV playlist.")
     parser.add_argument("--only-id", action="append", default=[],
                         help="Limit to these source ids (repeatable).")
     parser.add_argument("--skip-id", action="append", default=[],
@@ -267,8 +267,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     os.makedirs(DIST_DIR, exist_ok=True)
-    m3u_path = os.path.join(DIST_DIR, "badtv.m3u")
-    epg_path = os.path.join(DIST_DIR, "badtv.xml")
+    m3u_path = os.path.join(DIST_DIR, "radtv.m3u")
+    epg_path = os.path.join(DIST_DIR, "radtv.xml")
     epg_url = args.epg_url or f"file://{epg_path}"
 
     write_m3u(m3u_path, all_channels, epg_url=epg_url)

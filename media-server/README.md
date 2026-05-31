@@ -1,12 +1,12 @@
 # `media-server/` — local media backbone
 
-Optional. B@Dtv works fine as a streaming-only build, but if you've got a NAS
+Optional. R&Dtv works fine as a streaming-only build, but if you've got a NAS
 with a real movie/TV/music library, the scripts here wire it up cleanly.
 
 The reference deployment is **floor2** — TheClawFirm's 8TB ZFS box at
 `192.168.1.206`. Every host/path/pool name is read from
-[`../config/badtv.conf.example`](../config/badtv.conf.example), so pointing
-B@Dtv at a different NAS is a one-file edit.
+[`../config/radtv.conf.example`](../config/radtv.conf.example), so pointing
+R&Dtv at a different NAS is a one-file edit.
 
 ## What ships here
 
@@ -66,9 +66,9 @@ The reference floor2 stack now runs Jellyfin as the owned-library frontend over
 the same media tree:
 
 - Jellyfin URL: `http://192.168.1.206:8096`
-- Stack root: `/datapool/preserved/badtv-arr`
-- Compose override: `/datapool/preserved/badtv-arr/docker-compose.override.yml`
-- Credential handover file: `/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json`
+- Stack root: `/datapool/preserved/radtv-arr`
+- Compose override: `/datapool/preserved/radtv-arr/docker-compose.override.yml`
+- Credential handover file: `/datapool/preserved/radtv-arr/jellyfin/rdtv-admin.json`
 
 Jellyfin mounts `/datapool/media` as `/media:ro`, so it can index and stream
 the library without owning writes. Keep Sonarr/Radarr/download clients as the

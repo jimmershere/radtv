@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""B@Dtv Wizard entry point.
+"""R&Dtv Wizard entry point.
 
 Kodi invokes this file when the user selects the wizard from
-Programs / Add-ons / B@Dtv Wizard. All real work lives in
+Programs / Add-ons / R&Dtv Wizard. All real work lives in
 ``resources/lib`` so it stays testable outside Kodi.
 """
 import os
@@ -13,7 +13,7 @@ import sys
 _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_here, "resources"))
 
-from lib.badtv_wizard import run  # noqa: E402
+from lib.radtv_wizard import run  # noqa: E402
 
 
 if __name__ == "__main__":

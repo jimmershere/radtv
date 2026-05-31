@@ -1,6 +1,6 @@
-# Recommended Kodi Addons (B@Dtv stack)
+# Recommended Kodi Addons (R&Dtv stack)
 
-`./badtv setup` installs the **Auto** layer in full — addons + repos + every
+`./radtv setup` installs the **Auto** layer in full — addons + repos + every
 dependency. The **Manual** layer is for stuff that needs a user-specific
 account / app-key / per-machine credential the bootstrap can't pretend to
 have. This file is the human-readable source of truth; the machine-readable
@@ -40,7 +40,7 @@ re-authorization round.
   without one.
 - **Plex server / account** — log into Plex MOD with your own credentials.
 - **Trakt** — each scraper (Umbrella, Seren, …) ships its own registered
-  Trakt OAuth client. Authorize inside the scraper's settings; B@Dtv
+  Trakt OAuth client. Authorize inside the scraper's settings; R&Dtv
   doesn't centralize this because hosting Trakt client credentials for
   every install would burn through the API quota.
 - **FEN Light AM** — was the canonical FEN fork, but the

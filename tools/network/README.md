@@ -1,14 +1,14 @@
 # `tools/network/` — privacy / VPN / DNS helpers
 
 These are the user-side helper scripts referenced from
-[`../../docs/PRIVACY.md`](../../docs/PRIVACY.md). B@Dtv does **not**
+[`../../docs/PRIVACY.md`](../../docs/PRIVACY.md). R&Dtv does **not**
 operate a VPN, proxy, or DNS service; these scripts only configure
 existing free / open-source tooling and any subscription you already have.
 
 | Script                | What it does                                                  | sudo? |
 | --------------------- | ------------------------------------------------------------- | ----- |
 | `vpn-status.sh`       | Hit three independent public-IP echo services and print what each sees. Read-only. | no   |
-| `setup-wireguard.sh`  | Install `wireguard-tools` + `nftables` if missing. Copy a user-supplied `.conf` to `/etc/wireguard/badtv-wg.conf` with mode 600. Bring up the tunnel via `wg-quick`. Install an nftables kill-switch that drops non-WG egress. | yes |
+| `setup-wireguard.sh`  | Install `wireguard-tools` + `nftables` if missing. Copy a user-supplied `.conf` to `/etc/wireguard/radtv-wg.conf` with mode 600. Bring up the tunnel via `wg-quick`. Install an nftables kill-switch that drops non-WG egress. | yes |
 | `setup-dns.sh`        | Configure `systemd-resolved` to use Cloudflare 1.1.1.1 + Quad9 9.9.9.9 over DoT, with DNSSEC validation. Idempotent and revertible. | yes |
 
 Every script supports `--dry-run` to preview changes without applying.
@@ -34,7 +34,7 @@ sudo bash tools/network/setup-dns.sh
 - **Authenticate to a VPN for you.** No bundled API keys, no embedded
   provider credentials. Your account stays with your provider.
 - **Replace your firewall.** The nftables kill-switch installs as its own
-  `inet badtv-killswitch` table and uses priority `-100` so it doesn't
+  `inet radtv-killswitch` table and uses priority `-100` so it doesn't
   conflict with your existing rules.
 - **Reach the internet on your behalf.** `vpn-status.sh` makes plain
   HTTPS GETs to public IP echoers; nothing else phones home.

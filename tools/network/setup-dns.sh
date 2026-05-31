@@ -49,12 +49,12 @@ apply() {
   require_root
   ensure_resolved
 
-  local conf="/etc/systemd/resolved.conf.d/badtv-dns.conf"
+  local conf="/etc/systemd/resolved.conf.d/radtv-dns.conf"
   note "writing $conf"
   run "mkdir -p \"$(dirname "$conf")\""
   if (( ! DRY_RUN )); then
     cat > "$conf" <<'EOF'
-# B@Dtv DNS-over-TLS overlay. Remove this file (or run setup-dns.sh --revert)
+# R&Dtv DNS-over-TLS overlay. Remove this file (or run setup-dns.sh --revert)
 # to fall back to your distribution's defaults.
 [Resolve]
 DNS=1.1.1.1#cloudflare-dns.com 9.9.9.9#dns.quad9.net
@@ -80,14 +80,14 @@ EOF
 
 revert() {
   require_root
-  local conf="/etc/systemd/resolved.conf.d/badtv-dns.conf"
+  local conf="/etc/systemd/resolved.conf.d/radtv-dns.conf"
   if [[ -f "$conf" ]]; then
     note "removing $conf"
     run "rm -f \"$conf\""
     run "systemctl restart systemd-resolved"
     ok "reverted to distribution-default DNS"
   else
-    ok "no B@Dtv DNS overlay present; nothing to revert"
+    ok "no R&Dtv DNS overlay present; nothing to revert"
   fi
 }
 

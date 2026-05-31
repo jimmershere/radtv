@@ -1,8 +1,8 @@
-# B@Dtv IPTV sources.
+# R&Dtv IPTV sources.
 #
 # Declarative list of M3U + XMLTV sources the build script pulls and merges
 # into a single playlist + EPG. Keep entries grouped by category so users can
-# enable/disable broad slices via config/badtv.conf.example IPTV_INCLUDE_*.
+# enable/disable broad slices via config/radtv.conf.example IPTV_INCLUDE_*.
 #
 # Field reference:
 #   id        unique slug, used for logs and dedup

@@ -1,12 +1,12 @@
-# B@Dtv one-shot installer for Windows (PowerShell 5+).
+# R&Dtv one-shot installer for Windows (PowerShell 5+).
 #
 # Usage:
 #   pwsh ./install.ps1                  # apply defaults
 #   pwsh ./install.ps1 -DryRun
 #   $env:KODI_USERDATA="C:\Kodi\userdata"; pwsh ./install.ps1
 #
-# Defaults come from config/badtv.conf.example; if you keep
-# config/badtv.conf, edit it there. (PS reads the *.conf only as
+# Defaults come from config/radtv.conf.example; if you keep
+# config/radtv.conf, edit it there. (PS reads the *.conf only as
 # loose KEY=VAL lines for top-level scalars.)
 
 [CmdletBinding()]
@@ -23,12 +23,12 @@ function Warn([string]$msg) { Write-Host "!! $msg" -ForegroundColor Red }
 
 function Load-Config {
     $cfg = @{
-        BADTV_VERSION         = "2.0.0"
-        BADTV_REPO_RAW_URL    = "https://raw.githubusercontent.com/jimmershere/badtv/main"
+        RADTV_VERSION         = "2.0.0"
+        RADTV_REPO_RAW_URL    = "https://raw.githubusercontent.com/jimmershere/radtv/main"
         FLOOR2_HOST           = "192.168.1.206"
-        BADTV_SKIN_TARGET     = "arctic-zephyr-reloaded"
+        RADTV_SKIN_TARGET     = "arctic-zephyr-reloaded"
     }
-    foreach ($name in @("badtv.conf.example", "badtv.conf")) {
+    foreach ($name in @("radtv.conf.example", "radtv.conf")) {
         $path = Join-Path $repoRoot "config\$name"
         if (Test-Path $path) {
             Get-Content $path | ForEach-Object {
@@ -105,27 +105,27 @@ if (-not (Test-Path $advancedXml)) {
 # --- 3. PVR IPTV Simple Client ---------------------------------------------
 $pvrDir = Join-Path $userdata "addon_data\pvr.iptvsimple"
 $pvrXml = Join-Path $pvrDir "settings.xml"
-$m3u = "$($cfg.BADTV_REPO_RAW_URL)/iptv/dist/badtv.m3u"
-$epg = "$($cfg.BADTV_REPO_RAW_URL)/iptv/dist/badtv.xml"
+$m3u = "$($cfg.RADTV_REPO_RAW_URL)/iptv/dist/radtv.m3u"
+$epg = "$($cfg.RADTV_REPO_RAW_URL)/iptv/dist/radtv.xml"
 Invoke-Step "Configuring PVR IPTV Simple Client (M3U=$m3u, EPG=$epg)" {
     New-Item -ItemType Directory -Force -Path $pvrDir | Out-Null
     & python3 "$repoRoot\tools\_apply_pvr.py" "$pvrXml" "$m3u" "$epg"
 }
 
 # --- 4. Stage repository zip -----------------------------------------------
-$repoZip = Join-Path $repoRoot "dist\repository.badtv-$($cfg.BADTV_VERSION).zip"
+$repoZip = Join-Path $repoRoot "dist\repository.radtv-$($cfg.RADTV_VERSION).zip"
 if (Test-Path $repoZip) {
     Invoke-Step "Copying repository zip into Kodi packages cache" {
         New-Item -ItemType Directory -Force -Path $packagesDir | Out-Null
         Copy-Item -Force $repoZip $packagesDir
     }
-    Ok "repository.badtv zip staged at $packagesDir"
+    Ok "repository.radtv zip staged at $packagesDir"
 } else {
     Warn "$repoZip not found. Run 'make repo' first."
 }
 
 # --- 5. Skin override ------------------------------------------------------
-$skinTarget = $cfg.BADTV_SKIN_TARGET
+$skinTarget = $cfg.RADTV_SKIN_TARGET
 $skinAddon = switch ($skinTarget) {
     "arctic-zephyr-reloaded" { "skin.arctic.zephyr.reloaded" }
     "estuary-mod-v2"         { "skin.estuary.modv2" }
@@ -134,20 +134,20 @@ $skinAddon = switch ($skinTarget) {
 }
 if ($skinAddon) {
     $colorsDir = Join-Path $addonsRoot "$skinAddon\colors"
-    $skinSrc = Join-Path $repoRoot "build\wizard\resources\skin\$skinTarget\colors\badtv.xml"
+    $skinSrc = Join-Path $repoRoot "build\wizard\resources\skin\$skinTarget\colors\radtv.xml"
     if (Test-Path $colorsDir) {
-        Invoke-Step "Copying B@Dtv color override into $colorsDir" {
-            Copy-Item -Force $skinSrc (Join-Path $colorsDir "badtv.xml")
+        Invoke-Step "Copying R&Dtv color override into $colorsDir" {
+            Copy-Item -Force $skinSrc (Join-Path $colorsDir "radtv.xml")
         }
-        Ok "B@Dtv theme staged for $skinAddon"
+        Ok "R&Dtv theme staged for $skinAddon"
     } else {
         Warn "$skinAddon not installed yet. Install the skin, then re-run install.ps1."
     }
 }
 
 Write-Host ""
-Ok "B@Dtv install complete."
+Ok "R&Dtv install complete."
 Write-Host "Next steps:"
 Write-Host "  1. (Re)start Kodi."
-Write-Host "  2. Install repository.badtv via 'Install from zip file'."
-Write-Host "  3. Launch B@Dtv Wizard from Programs to finish setup."
+Write-Host "  2. Install repository.radtv via 'Install from zip file'."
+Write-Host "  3. Launch R&Dtv Wizard from Programs to finish setup."

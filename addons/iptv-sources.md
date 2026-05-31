@@ -1,10 +1,10 @@
-# IPTV Sources for B@Dtv
+# IPTV Sources for R&Dtv
 
-B@Dtv's IPTV guidance prioritizes **lawful free-to-air, ad-supported, or
+R&Dtv's IPTV guidance prioritizes **lawful free-to-air, ad-supported, or
 user-supplied playlists**. The canonical machine-readable list lives in
 [`../iptv/sources.yaml`](../iptv/sources.yaml); the builder in
 [`../iptv/build-playlist.py`](../iptv/build-playlist.py) merges them into
-`iptv/dist/badtv.{m3u,xml}`. This document is the human-readable rationale
+`iptv/dist/radtv.{m3u,xml}`. This document is the human-readable rationale
 behind the choices and a map for swapping things when sources move.
 
 ## Kodi setup path
@@ -14,9 +14,9 @@ The wizard does this for you. By hand:
 1. Install **PVR IPTV Simple Client**.
 2. Add-ons → My add-ons → PVR clients → PVR IPTV Simple Client → Configure.
 3. **M3U Playlist URL:**
-   `https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.m3u`
+   `https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.m3u`
 4. **XMLTV EPG URL:**
-   `https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.xml`
+   `https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.xml`
 5. Save and restart Kodi / toggle the addon.
 6. **TV → Guide** to verify channels + EPG.
 
@@ -25,13 +25,13 @@ The wizard does this for you. By hand:
 ### MJH playlists — *the* reliable free US linear set
 `https://i.mjh.nz/` aggregates Pluto, Plex Live, Samsung TV+, Stirr, Tubi
 (EPGs), and a handful of others into well-maintained M3U + XML pairs.
-B@Dtv builds against `i.mjh.nz/{PlutoTV,Plex,SamsungTVPlus,Stirr}/us.m3u8`
+R&Dtv builds against `i.mjh.nz/{PlutoTV,Plex,SamsungTVPlus,Stirr}/us.m3u8`
 plus matching `.xml` EPGs.
 
 ### iptv-org
 `https://iptv-org.github.io/iptv/` — community-maintained global directory.
 Per-country (`countries/<cc>.m3u`) and per-category (`categories/<cat>.m3u`)
-lists. B@Dtv enables news / sports / music + the full index by default; per-
+lists. R&Dtv enables news / sports / music + the full index by default; per-
 country lists ship disabled (flip in `sources.yaml`).
 
 ### epg.pw
@@ -40,7 +40,7 @@ behind the per-source EPGs.
 
 ## US channels and news
 
-B@Dtv treats US news as a layered strategy because direct M3U availability
+R&Dtv treats US news as a layered strategy because direct M3U availability
 for the big cable networks rotates constantly.
 
 ### Free / always-on (in the default playlist)
@@ -75,11 +75,11 @@ The least stable category. Recommended:
 - TV Everywhere credentials in the relevant addon.
 - iptv-org sports category as a fallback (already enabled).
 - A user-supplied M3U slot for lawful sources you maintain (set
-  `IPTV_M3U_URL_OVERRIDE` in `config/badtv.conf`).
+  `IPTV_M3U_URL_OVERRIDE` in `config/radtv.conf`).
 
 ## Best practice
 
-- One stable daily-driver playlist (the B@Dtv bundle).
+- One stable daily-driver playlist (the R&Dtv bundle).
 - One overflow international playlist (toggle on per-country slots).
 - One news-only lightweight playlist if you want news without the noise.
 - Keep EPG URLs separate from M3U URLs so guide failures don't break

@@ -1,25 +1,25 @@
-# B@Dtv — Privacy & Anonymization
+# R&Dtv — Privacy & Anonymization
 
 This page is the practical user-side counterpart to the legal posture
 documented in [`../DISCLAIMER.md`](../DISCLAIMER.md). It covers what to do,
 why, and what *not* to expect.
 
-## What B@Dtv itself sees about you
+## What R&Dtv itself sees about you
 
-Nothing. B@Dtv has no analytics, no telemetry, no first-party hosted
-services, no accounts, no opt-in metrics. The only network calls B@Dtv
+Nothing. R&Dtv has no analytics, no telemetry, no first-party hosted
+services, no accounts, no opt-in metrics. The only network calls R&Dtv
 makes on its own behalf are:
 
 | Call                                                                 | Why                                                  | Run by      |
 | -------------------------------------------------------------------- | ---------------------------------------------------- | ----------- |
-| `raw.githubusercontent.com/jimmershere/badtv/main/...`               | Wizard fetches the live scraper catalog + IPTV M3U.  | GitHub      |
+| `raw.githubusercontent.com/jimmershere/radtv/main/...`               | Wizard fetches the live scraper catalog + IPTV M3U.  | GitHub      |
 | Fetches in `iptv/build-playlist.py` to `i.mjh.nz`, `iptv-org.github.io`, `epg.pw` | Build-time merge of public M3U + XMLTV.   | You (build) |
 | Fetches in `tools/refresh-scrapers.py` to each scraper repo URL      | CI-time probe to refresh the catalog.                | GitHub Actions |
 | Optional `tools/network/vpn-status.sh` calls to `ifconfig.io` etc.   | Show your current public IP so you can verify VPN.   | Public IP echo services |
 
 Every other network call your Kodi makes — to scraper APIs, Real-Debrid,
 Trakt, the actual stream servers — is initiated by the addon you're using
-and routed by your operating system's network stack. **B@Dtv does not
+and routed by your operating system's network stack. **R&Dtv does not
 intercept, proxy, log, or transmit any of it.**
 
 ## What a VPN actually protects against
@@ -56,7 +56,7 @@ The shortlist is biased toward providers that:
 Avoid: free VPN apps (you are the product); browser-extension-only VPNs
 (don't cover Kodi); providers whose ownership / parent company is opaque.
 
-## Setting up WireGuard with B@Dtv's helper
+## Setting up WireGuard with R&Dtv's helper
 
 The user-side flow looks like this:
 
@@ -65,19 +65,19 @@ The user-side flow looks like this:
    configuration files → pick a server → Download.)
 2. Drop it somewhere on the device, e.g.
    `~/Downloads/mullvad-newyork-01.conf`.
-3. Run B@Dtv's helper:
+3. Run R&Dtv's helper:
    ```bash
    sudo bash tools/network/setup-wireguard.sh ~/Downloads/mullvad-newyork-01.conf
    ```
    The script:
    - installs `wireguard-tools` if missing (apt/dnf/pacman aware);
-   - copies the conf to `/etc/wireguard/badtv-wg.conf` with `600` perms;
+   - copies the conf to `/etc/wireguard/radtv-wg.conf` with `600` perms;
    - sets up an `nftables` kill-switch that drops all non-WG traffic when
      the interface is down;
-   - brings up the tunnel via `wg-quick up badtv-wg`;
+   - brings up the tunnel via `wg-quick up radtv-wg`;
    - enables the systemd unit so it survives reboots;
    - prints the new public IP for verification.
-4. Verify in Kodi: **B@Dtv Wizard → Check anonymizer status**. It will
+4. Verify in Kodi: **R&Dtv Wizard → Check anonymizer status**. It will
    show your current public IP, the country, and the ASN. Confirm that
    matches your VPN's exit and not your ISP.
 
@@ -87,7 +87,7 @@ anything. Run that first.
 ## DNS
 
 A VPN routes packets, but if your OS leaks DNS queries to your ISP's
-resolver, half the privacy goes away. B@Dtv ships a separate helper for
+resolver, half the privacy goes away. R&Dtv ships a separate helper for
 DNS-over-TLS:
 
 ```bash

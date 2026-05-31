@@ -1,10 +1,10 @@
-# B@Dtv Install
+# R&Dtv Install
 
-> **Read [`../DISCLAIMER.md`](../DISCLAIMER.md) before installing.** B@Dtv
+> **Read [`../DISCLAIMER.md`](../DISCLAIMER.md) before installing.** R&Dtv
 > is GPL-3.0 packaging software with no warranty. The installer will print
 > a summary and prompt for `I AGREE` on first run. To skip the prompt in
 > automation, pass `--accept-disclaimer` or set
-> `BADTV_ACCEPT_DISCLAIMER=1`.
+> `RADTV_ACCEPT_DISCLAIMER=1`.
 
 There are two paths: the **fast path** (one-shot installer does everything) and
 the **manual path** (you click through Kodi by hand). Pick one.
@@ -22,7 +22,7 @@ the **manual path** (you click through Kodi by hand). Pick one.
 ### Debian / Ubuntu / Mint extras
 
 The `kodi` apt package does **not** pull in the binary helper addons several
-parts of B@Dtv (and most modern Kodi streams) depend on. Install them once
+parts of R&Dtv (and most modern Kodi streams) depend on. Install them once
 or the wizard's "Install official addons" step will fail with errors like
 *"The dependency on inputstream.adaptive version 19.0.0 could not be
 satisfied"*:
@@ -38,7 +38,7 @@ sudo apt-get install -y \
 | Package                       | Required for                                            |
 | ----------------------------- | ------------------------------------------------------- |
 | `kodi-inputstream-adaptive`   | YouTube, Tubi, Pluto TV, Twitch, most modern HLS/DASH.  |
-| `kodi-pvr-iptvsimple`         | Live TV (the PVR backend B@Dtv's wizard configures).    |
+| `kodi-pvr-iptvsimple`         | Live TV (the PVR backend R&Dtv's wizard configures).    |
 | `kodi-inputstream-rtmp`       | RTMP-based community streams + a few legacy addons.     |
 | `kodi-vfs-libarchive`         | Browse zip/rar archives natively (some scrapers want it).|
 
@@ -46,44 +46,44 @@ LibreELEC / CoreELEC ship all of these in their image; you only need this
 apt step on a general-purpose Linux distro with Kodi installed from the
 distro package.
 
-[Releases page]: https://github.com/jimmershere/badtv/releases
+[Releases page]: https://github.com/jimmershere/radtv/releases
 
 ---
 
 ## Fast path (recommended)
 
 ```bash
-git clone https://github.com/jimmershere/badtv.git
-cd badtv
-./badtv setup
+git clone https://github.com/jimmershere/radtv.git
+cd radtv
+./radtv setup
 ```
 
 That single command runs the full host-side bootstrap: apt deps, VPN,
 Kodi userdata, addon downloads from `mirrors.kodi.tv`, PVR config,
 Real-Debrid + Trakt OAuth, stream test, kiosk-mode launch. State is
-persisted in `~/.config/badtv/state.json` so a partial run can pick up
-with `./badtv setup` again.
+persisted in `~/.config/radtv/state.json` so a partial run can pick up
+with `./radtv setup` again.
 
 Useful subcommands:
 
 ```bash
-./badtv status                  # what's done, what isn't
-./badtv repair install_official # re-run a single step
-./badtv launch                  # just start Kodi
-./badtv setup --force           # re-do every step
+./radtv status                  # what's done, what isn't
+./radtv repair install_official # re-run a single step
+./radtv launch                  # just start Kodi
+./radtv setup --force           # re-do every step
 ```
 
 The old `make all` + `bash install.sh` path still exists but is now a
-subset of what `./badtv setup` does -- it skips apt, VPN, addon
+subset of what `./radtv setup` does -- it skips apt, VPN, addon
 downloads, and OAuth. Prefer the host-side wizard.
 
 Then open Kodi:
 
 1. **Settings → Add-ons → Install from zip file** → pick
-   `dist/repository.badtv-2.0.1.zip`.
-2. **Install from repository → B@Dtv Repository → Program add-ons →
-   B@Dtv Wizard → Install.**
-3. **Programs → B@Dtv Wizard.** Work through the menu:
+   `dist/repository.radtv-2.0.1.zip`.
+2. **Install from repository → R&Dtv Repository → Program add-ons →
+   R&Dtv Wizard → Install.**
+3. **Programs → R&Dtv Wizard.** Work through the menu:
    - install official addons (queues PVR IPTV Simple, Tubi, Pluto TV, Plex,
      YouTube, A4K Subtitles, the Arctic Zephyr Reloaded skin);
    - show third-party scrapers (live catalog — Umbrella / Seren / Crew /
@@ -97,7 +97,7 @@ Then open Kodi:
    - refresh scraper catalog from GitHub on demand;
    - configure PVR IPTV Simple Client (M3U + EPG already pre-filled);
    - authorize Real-Debrid and Trakt;
-   - apply B@Dtv theme to your skin;
+   - apply R&Dtv theme to your skin;
    - add floor2 NFS sources (no-op if you don't have a NAS);
    - run a library scan.
 
@@ -113,11 +113,11 @@ If `install.sh` is off the table (read-only filesystem, locked-down device,
 managed kiosk):
 
 1. **Get the repo zip onto the device.** Either build it (`make repo`) or
-   download `dist/repository.badtv-2.0.1.zip` from the Releases page.
-2. **Kodi → Settings → Add-ons → Install from zip file → repository.badtv-….zip.**
-3. **Install from repository → B@Dtv Repository → Program add-ons →
-   B@Dtv Wizard.**
-4. **Programs → B@Dtv Wizard** does the rest (same menu as above).
+   download `dist/repository.radtv-2.0.1.zip` from the Releases page.
+2. **Kodi → Settings → Add-ons → Install from zip file → repository.radtv-….zip.**
+3. **Install from repository → R&Dtv Repository → Program add-ons →
+   R&Dtv Wizard.**
+4. **Programs → R&Dtv Wizard** does the rest (same menu as above).
 
 The wizard's "Configure PVR IPTV Simple Client" action writes
 `userdata/addon_data/pvr.iptvsimple/settings.xml` directly — you don't have
@@ -136,7 +136,7 @@ sudo bash media-server/setup-nfs.sh    # or setup-smb.sh
 
 # on the Kodi client:
 #   The wizard's "Add floor2 NFS media sources" action wires up sources.xml
-#   automatically once $FLOOR2_HOST in config/badtv.conf is correct.
+#   automatically once $FLOOR2_HOST in config/radtv.conf is correct.
 ```
 
 Then in Kodi → **Files → Add videos → Browse → NFS → floor2** and import
@@ -158,7 +158,7 @@ Credential handover is intentionally out-of-repo. The protected floor2 handover
 file is:
 
 ```
-/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json
+/datapool/preserved/radtv-arr/jellyfin/rdtv-admin.json
 ```
 
 That file must remain `0600` and should be retrieved only through a trusted SSH
@@ -170,7 +170,7 @@ history, chat, Git commits, screenshots, or issue trackers.
 ## Privacy / VPN (optional but recommended)
 
 For practical guidance on VPN providers, the kill-switch concept, and the
-B@Dtv helper scripts that bring up WireGuard + DoT for you, see
+R&Dtv helper scripts that bring up WireGuard + DoT for you, see
 [`PRIVACY.md`](PRIVACY.md) and [`../tools/network/README.md`](../tools/network/README.md).
 
 The wizard also has a **"Check anonymizer status"** action that pings
@@ -182,7 +182,7 @@ what you think it is.
 
 The wizard handles most of this, but for completeness:
 
-- **Settings → Skin → Colours → badtv** to lock in the B@Dtv palette.
+- **Settings → Skin → Colours → radtv** to lock in the R&Dtv palette.
 - **Settings → Player → Adjust display refresh rate → On Start/Stop.**
 - **Settings → System → Display → Whitelist** all resolutions your TV
   reports.
@@ -194,6 +194,6 @@ The wizard handles most of this, but for completeness:
 
 ## Done
 
-After that B@Dtv is functionally install-and-done; the remaining one-time
+After that R&Dtv is functionally install-and-done; the remaining one-time
 steps are personal service logins (Real-Debrid, Trakt, any premium IPTV
 service you maintain).

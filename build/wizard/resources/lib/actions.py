@@ -129,7 +129,7 @@ def authorize_real_debrid() -> None:
     """Open the URL Resolver settings; from there the user clicks Authorize."""
     ku.info(
         "Real-Debrid authorization",
-        "B@Dtv will open URLResolver settings. Pick 'Universal Resolvers' > "
+        "R&Dtv will open URLResolver settings. Pick 'Universal Resolvers' > "
         "'Real-Debrid' > 'Authorize My Account', then follow the device-code "
         "URL on your phone or laptop.",
     )
@@ -146,14 +146,14 @@ def authorize_trakt_in(addon_id: str) -> None:
 
 
 def configure_pvr() -> None:
-    repo_raw = ku.get_setting("badtv_repo_raw_url",
-                              "https://raw.githubusercontent.com/jimmershere/badtv/main")
-    m3u_url = f"{repo_raw}/iptv/dist/badtv.m3u"
-    epg_url = f"{repo_raw}/iptv/dist/badtv.xml"
+    repo_raw = ku.get_setting("radtv_repo_raw_url",
+                              "https://raw.githubusercontent.com/jimmershere/radtv/main")
+    m3u_url = f"{repo_raw}/iptv/dist/radtv.m3u"
+    epg_url = f"{repo_raw}/iptv/dist/radtv.xml"
 
     custom = ku.confirm(
-        "B@Dtv IPTV",
-        f"Use the bundled B@Dtv playlist?\n\nM3U: {m3u_url}\nEPG: {epg_url}",
+        "R&Dtv IPTV",
+        f"Use the bundled R&Dtv playlist?\n\nM3U: {m3u_url}\nEPG: {epg_url}",
     )
     if not custom:
         m3u_url = ku.text_input("M3U URL", m3u_url) or m3u_url
@@ -185,14 +185,14 @@ def add_floor2_sources() -> None:
     ku.log(f"sources.xml updated at {sources_path} (+{added})")
 
 
-def apply_badtv_theme() -> None:
-    """Copy the B@Dtv color XML into the active skin's colors/ dir.
+def apply_radtv_theme() -> None:
+    """Copy the R&Dtv color XML into the active skin's colors/ dir.
 
     Only Arctic Zephyr Reloaded and Estuary MOD V2 are wired up; other skins
     fall back to a friendly explanation. The override is a single XML file --
     if the user uninstalls the skin we just stop applying.
     """
-    target = ku.get_setting("badtv_skin_target", "arctic-zephyr-reloaded")
+    target = ku.get_setting("radtv_skin_target", "arctic-zephyr-reloaded")
     skin_dirs = {
         "arctic-zephyr-reloaded": ("skin.arctic.zephyr.reloaded", "Arctic Zephyr Reloaded"),
         "estuary-mod-v2": ("skin.estuary.modv2", "Estuary MOD V2"),
@@ -209,20 +209,20 @@ def apply_badtv_theme() -> None:
         ku.info("Skin theme", f"{human} isn't installed yet. Install it from the addon menu first.")
         return
 
-    src = os.path.join(ku.addon_path(), "resources", "skin", target, "colors", "badtv.xml")
+    src = os.path.join(ku.addon_path(), "resources", "skin", target, "colors", "radtv.xml")
     if not os.path.isfile(src):
         ku.info("Skin theme", f"Missing override file: {src}")
         return
 
     dst_dir = os.path.join(skin_root, "colors")
     os.makedirs(dst_dir, exist_ok=True)
-    dst = os.path.join(dst_dir, "badtv.xml")
+    dst = os.path.join(dst_dir, "radtv.xml")
     shutil.copy2(src, dst)
-    ku.log(f"Copied B@Dtv color override -> {dst}")
+    ku.log(f"Copied R&Dtv color override -> {dst}")
 
-    ku.execute(f"Skin.SetString(ColorTheme,badtv)")
+    ku.execute(f"Skin.SetString(ColorTheme,radtv)")
     ku.reload_skin()
-    ku.notify(f"B@Dtv theme applied to {human}.")
+    ku.notify(f"R&Dtv theme applied to {human}.")
 
 
 def run_library_scan() -> None:
@@ -233,17 +233,17 @@ def run_library_scan() -> None:
 
 def show_about() -> None:
     body = (
-        "[B]B@Dtv[/B]  -  Hell's Kitchen-grade Kodi.\n\n"
+        "[B]R&Dtv[/B]  -  Hell's Kitchen-grade Kodi.\n\n"
         "This in-Kodi wizard is [B]maintenance mode[/B]. First-run setup "
         "(installing Kodi binary addons, VPN, addons, OAuth, skin theme) "
         "is done by the host-side bootstrap on your laptop:\n\n"
-        "    ./badtv setup\n\n"
-        "Source: https://github.com/jimmershere/badtv\n\n"
+        "    ./radtv setup\n\n"
+        "Source: https://github.com/jimmershere/radtv\n\n"
         "[B]Legal & privacy:[/B]\n"
         "  - DISCLAIMER.md (no warranty, user responsibility)\n"
         "  - NOTICE.md (third-party trademarks)\n"
         "  - docs/PRIVACY.md (VPN + DNS guidance)\n\n"
-        "[I]B@Dtv is not affiliated with NBCUniversal, the XBMC Foundation, or "
-        "any scraper/streaming service. Don't use B@Dtv to infringe copyright.[/I]"
+        "[I]R&Dtv is not affiliated with NBCUniversal, the XBMC Foundation, or "
+        "any scraper/streaming service. Don't use R&Dtv to infringe copyright.[/I]"
     )
-    ku.info("About B@Dtv", body)
+    ku.info("About R&Dtv", body)

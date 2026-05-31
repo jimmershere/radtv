@@ -1,9 +1,9 @@
-# B@Dtv build orchestrator.
+# R&Dtv build orchestrator.
 #
 #   make help     - list targets
 #   make repo     - rebuild dist/*.zip + addons.xml + md5
 #   make assets   - rasterize SVG branding -> PNG/JPG, copy into addon dirs
-#   make iptv     - fetch + merge IPTV sources -> iptv/dist/badtv.{m3u,xml}
+#   make iptv     - fetch + merge IPTV sources -> iptv/dist/radtv.{m3u,xml}
 #   make install  - run install.sh against the local Kodi userdata
 #   make clean    - drop dist/ and iptv/dist/ contents
 #   make all      - assets + repo + iptv
@@ -12,9 +12,9 @@
 
 SHELL := /bin/bash
 
-WIZARD_ID    := script.badtv.wizard
+WIZARD_ID    := script.radtv.wizard
 WIZARD_VER   := 2.0.0
-REPO_ID      := repository.badtv
+REPO_ID      := repository.radtv
 REPO_VER     := 2.0.1
 
 DIST         := dist
@@ -69,7 +69,7 @@ $(REPO_ZIP): $(DIST)
 $(REPO_DIR)/addons.xml.md5: $(REPO_DIR)/addons.xml
 	md5sum $< | awk '{print $$1}' > $@
 
-install:  ## Apply B@Dtv to the local Kodi userdata
+install:  ## Apply R&Dtv to the local Kodi userdata
 	bash install.sh
 
 check:  ## Lint XML + run wizard smoke tests + structurally lint built zips
@@ -77,7 +77,7 @@ check:  ## Lint XML + run wizard smoke tests + structurally lint built zips
 	  [ET.parse(p) for p in ['$(WIZARD_DIR)/addon.xml','$(REPO_DIR)/addon.xml','$(REPO_DIR)/addons.xml']]; \
 	  print('xml ok')"
 	python3 -c "import json; json.load(open('addons/scraper-catalog.json')); print('catalog json ok')"
-	cd $(WIZARD_DIR) && PYTHONPATH=resources python3 -c "from lib import badtv_wizard, actions, sources_xml, pvr_iptv, catalog, network; print('wizard imports ok')"
+	cd $(WIZARD_DIR) && PYTHONPATH=resources python3 -c "from lib import radtv_wizard, actions, sources_xml, pvr_iptv, catalog, network; print('wizard imports ok')"
 	@if [ -f $(WIZARD_ZIP) ] && [ -f $(REPO_ZIP) ]; then \
 	  python3 tools/lint-zips.py; \
 	else \

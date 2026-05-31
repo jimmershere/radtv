@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  B@Dtv color override for stock Estuary (Kodi's default skin)
+  R&Dtv color override for stock Estuary (Kodi's default skin)
   -----------------------------------------------------------
   Drop this file at:
-      <kodi>/addons/skin.estuary/colors/badtv.xml
-  Then in Kodi: Settings > Skin > Colors > "badtv".
+      <kodi>/addons/skin.estuary/colors/radtv.xml
+  Then in Kodi: Settings > Skin > Colors > "radtv".
 -->
 <colors>
   <color name="white">FFE8DCC0</color>

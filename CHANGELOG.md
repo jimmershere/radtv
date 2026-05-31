@@ -24,7 +24,7 @@ the scrapers sit on top of it.
   (`/media/movies`) and **Shows** (`/media/tv`) libraries over the read-only
   `/datapool/media` mount, kicks an initial scan, and mints a named API key.
   Idempotent — a re-run re-authenticates with the stored admin creds and only
-  adds libraries that are missing, so `./badtv repair jellyfin` is safe.
+  adds libraries that are missing, so `./radtv repair jellyfin` is safe.
 
 - **Native Kodi ↔ Jellyfin sync** (`_install_jellyfin_kodi_addon` +
   `_seed_jellyfin_kodi`). Installs the Jellyfin-for-Kodi addon
@@ -94,7 +94,7 @@ so a single provider's policy change can't gut the library again.
   ships the same JSON API on the same port (8191) via Camoufox
   (anti-detection Firefox), so Prowlarr's existing "FlareSolverr"
   indexer-proxy implementation works unchanged. `step_cleanup` removes the
-  orphaned `badtv-flaresolverr` container on upgrade.
+  orphaned `radtv-flaresolverr` container on upgrade.
 
 - **Optional Jellyfin frontend** (`step_jellyfin`). Off by default. Brings
   up a parallel web/mobile UI over the same /datapool/media tree. Gated
@@ -112,15 +112,15 @@ so a single provider's policy change can't gut the library again.
 ### Step order (was 16, now 20)
 
 ```
-disclaimer → apt → kodi_userdata → vpn → badtv_addons → install_official
+disclaimer → apt → kodi_userdata → vpn → radtv_addons → install_official
   → grey_addons → CLEANUP (v3) → floor2 → prowlarr (Byparr now)
   → USENET (v3) → JELLYFIN (v3, opt-in) → elementum → pvr → skin
   → realdebrid → TORBOX (v3) → trakt → stream_test → launch
 ```
 
 Each new step is non-blocking: skip ones you don't need; resume any of
-them later via `./badtv repair <step>`. State machine unchanged --
-`~/.config/badtv/state.json` tracks each new step independently.
+them later via `./radtv repair <step>`. State machine unchanged --
+`~/.config/radtv/state.json` tracks each new step independently.
 
 ### Verification still needed
 
@@ -139,7 +139,7 @@ them later via `./badtv repair <step>`. State machine unchanged --
 
 ### What landed
 
-- **Six new addons install themselves automatically** during `./badtv setup`:
+- **Six new addons install themselves automatically** during `./radtv setup`:
   Umbrella 6.7.75, The Crew 2.0.6, Seren 2.1.9, POV 6.05.13,
   CocoScrapers 1.0.39, ResolveURL 5.1.199. Full dependency chains
   (context.seren, script.module.future, script.module.simplejson,
@@ -152,7 +152,7 @@ them later via `./badtv repair <step>`. State machine unchanged --
   No more "open the addon, settings, accounts, RD, paste code" twenty-
   click round once you're in Kodi.
 - **`step_grey_addons`** added between `install_official` and `pvr`. New
-  step count is **12** (was 11). Re-runnable via `./badtv repair grey_addons`.
+  step count is **12** (was 11). Re-runnable via `./radtv repair grey_addons`.
 - **Pre-enable in Addons33.db**: Kodi 19+ defaults third-party-repo
   addons to disabled with `disabledReason=1`. The bootstrap now writes
   `enabled=1, disabledReason=0` rows BEFORE Kodi first launches, so the
@@ -180,10 +180,10 @@ them later via `./badtv repair <step>`. State machine unchanged --
 ### How to verify after pull
 
 ```
-./badtv repair install_official   # idempotent; re-enables in DB
-./badtv repair grey_addons        # installs full grey stack
-./badtv repair pvr                # clean PVR settings + pvrmanager.enabled
-./badtv launch
+./radtv repair install_official   # idempotent; re-enables in DB
+./radtv repair grey_addons        # installs full grey stack
+./radtv repair pvr                # clean PVR settings + pvrmanager.enabled
+./radtv launch
 ```
 
 In Kodi: Add-ons → Video add-ons should list Umbrella + The Crew + Seren
@@ -204,7 +204,7 @@ should see thousands of titles via cached RD links.
   IMDb TV, YouTube, all third-party scraper authors, fonts, OSS deps).
 - `install.sh` first-run prints disclaimer summary and requires the user
   to type `I AGREE` (or pass `--accept-disclaimer` / set
-  `BADTV_ACCEPT_DISCLAIMER=1` for automation).
+  `RADTV_ACCEPT_DISCLAIMER=1` for automation).
 - Wizard's About panel now links DISCLAIMER / NOTICE / PRIVACY and
   reiterates the non-affiliation statement.
 
@@ -216,7 +216,7 @@ should see thousands of titles via cached RD links.
   - `vpn-status.sh` — hits ipinfo.io / ifconfig.io / icanhazip.com in
     parallel, prints results, agreement check. No install, no sudo.
   - `setup-wireguard.sh` — takes a user-supplied WireGuard `.conf`,
-    installs `wireguard-tools` + `nftables`, brings up `badtv-wg`,
+    installs `wireguard-tools` + `nftables`, brings up `radtv-wg`,
     installs an nftables kill-switch that drops non-WG egress, enables
     the systemd unit. Has `--dry-run`, `--down`, `--status`.
   - `setup-dns.sh` — switches `systemd-resolved` to Cloudflare 1.1.1.1
@@ -233,13 +233,13 @@ should see thousands of titles via cached RD links.
 
 ---
 
-## 2.0.0 — "B@Dtv" (2026-05-23)
+## 2.0.0 — "R&Dtv" (2026-05-23)
 
 ### Rebrand
-- Renamed project from **TerraKodi** to **B@Dtv**. Directory moved to
-  `/app/badtv`. Addon IDs migrated:
-  - `plugin.video.terrakodi` → `script.badtv.wizard`
-  - `repository.terrakodi` → `repository.badtv`
+- Renamed project from **TerraKodi** to **R&Dtv**. Directory moved to
+  `/app/radtv`. Addon IDs migrated:
+  - `plugin.video.terrakodi` → `script.radtv.wizard`
+  - `repository.terrakodi` → `repository.radtv`
 - New Black Donnellys-inspired identity: soot black, whiskey amber, deep
   emerald, brick red, parchment. Tokens in `assets/colors/tokens.md`,
   theme rules in `docs/THEME.md`.
@@ -247,8 +247,8 @@ should see thousands of titles via cached RD links.
   plus `tools/render-assets.sh` to rasterize.
 
 ### Wizard
-- Replaced the textviewer stub with a real script addon (`script.badtv.wizard`)
-  organized under `resources/lib/` (`badtv_wizard`, `actions`, `kodiutils`,
+- Replaced the textviewer stub with a real script addon (`script.radtv.wizard`)
+  organized under `resources/lib/` (`radtv_wizard`, `actions`, `kodiutils`,
   `sources_xml`, `pvr_iptv`).
 - Menu-driven actions:
   - Install the curated official addon stack.
@@ -259,7 +259,7 @@ should see thousands of titles via cached RD links.
   - Configure PVR IPTV Simple Client end-to-end (M3U + EPG, idempotent
     settings.xml write).
   - Add floor2 NFS sources to `userdata/sources.xml` (idempotent).
-  - Apply B@Dtv skin color override to Arctic Zephyr Reloaded / Estuary
+  - Apply R&Dtv skin color override to Arctic Zephyr Reloaded / Estuary
     MOD V2 / Estuary.
   - Trigger library scan.
   - About / branding screen.
@@ -275,7 +275,7 @@ should see thousands of titles via cached RD links.
   international slots, epg.pw fallback EPG).
 - `iptv/build-playlist.py` — stdlib + PyYAML merger that fetches each
   enabled source, dedupes channels by `tvg-id` / name, and writes
-  `iptv/dist/badtv.m3u` + `iptv/dist/badtv.xml`.
+  `iptv/dist/radtv.m3u` + `iptv/dist/radtv.xml`.
 - `make iptv` target wraps the above.
 
 ### Skin overrides (new)
@@ -287,16 +287,16 @@ should see thousands of titles via cached RD links.
 - `install.sh` (Linux/macOS) + `install.ps1` (Windows): detect Kodi
   userdata, drop `sources.xml`, `advancedsettings.xml`,
   `pvr.iptvsimple/settings.xml`, stage the repo zip, copy the active skin's
-  B@Dtv color override.
+  R&Dtv color override.
 - Idempotent. `--dry-run` flag. Honors `KODI_USERDATA` env var.
 - Inline + helper Python (`tools/_apply_sources.py`, `tools/_apply_pvr.py`)
   share the wizard's settings shape.
 
 ### Config (new)
-- `config/badtv.conf.example` is the single source of truth for floor2
-  host, repo URL, IPTV toggles, skin target. `config/badtv.conf` (gitignored)
+- `config/radtv.conf.example` is the single source of truth for floor2
+  host, repo URL, IPTV toggles, skin target. `config/radtv.conf` (gitignored)
   overrides.
-- `config/load.sh` layers the two and exports `BADTV_*`, `FLOOR2_*`,
+- `config/load.sh` layers the two and exports `RADTV_*`, `FLOOR2_*`,
   `IPTV_*`, etc. for every shell entry point.
 - Removed hardcoded `192.168.1.206`, `datapool`, and `jimmershere/terrakodi`
   references from `media-server/setup-nfs.sh`, `media-server/setup-smb.sh`,
@@ -306,14 +306,14 @@ should see thousands of titles via cached RD links.
 - New `Makefile` with `repo`, `assets`, `iptv`, `install`, `clean`, `check`,
   `help` targets.
 - `tools/build-repo.py` rewrites the zip-root prefix so the addon zip
-  extracts to `script.badtv.wizard/` (Kodi's requirement) regardless of the
+  extracts to `script.radtv.wizard/` (Kodi's requirement) regardless of the
   source dir name.
 - `make check` parses every addon XML and imports every wizard module.
 
 ### Docs
 - README, `docs/INSTALL.md`, `docs/SETUP-GUIDE.md`, `docs/ADDON-LIST.md`,
   `addons/recommended.md`, `addons/iptv-sources.md`, and
-  `addons/iptv-sources-full.md` all rewritten end-to-end for the B@Dtv
+  `addons/iptv-sources-full.md` all rewritten end-to-end for the R&Dtv
   brand, new wizard, IPTV pipeline, and one-shot installer.
 - New `docs/THEME.md` documents the Black Donnellys palette + skin
   rules.
@@ -321,7 +321,7 @@ should see thousands of titles via cached RD links.
 ### Housekeeping
 - Deleted prebuilt TerraKodi zips from `dist/` (regenerated via `make repo`).
 - Extended `.gitignore` for `iptv/dist/*.m3u`, `iptv/dist/*.xml`,
-  `config/badtv.conf`, `assets/branding/*.png`, `assets/branding/*.jpg`.
+  `config/radtv.conf`, `assets/branding/*.png`, `assets/branding/*.jpg`.
 
 ---
 

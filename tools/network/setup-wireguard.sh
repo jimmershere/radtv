@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bring up a user-supplied WireGuard configuration as the `badtv-wg`
+# Bring up a user-supplied WireGuard configuration as the `radtv-wg`
 # interface, with an nftables kill-switch that prevents traffic egress when
 # the tunnel is down.
 #
@@ -9,7 +9,7 @@
 #   sudo bash tools/network/setup-wireguard.sh --down       # take it down
 #   sudo bash tools/network/setup-wireguard.sh --status     # show state
 #
-# B@Dtv does not provide WireGuard configs. Get one from your VPN provider
+# R&Dtv does not provide WireGuard configs. Get one from your VPN provider
 # (Mullvad, ProtonVPN, IVPN all have a "Generate WireGuard config" page).
 #
 # This script DOES NOT verify or vouch for your provider's configuration.
@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-IFACE="badtv-wg"
+IFACE="radtv-wg"
 CONF_DST="/etc/wireguard/${IFACE}.conf"
 DRY_RUN=0
 ACTION="up"
@@ -80,15 +80,15 @@ apply_kill_switch() {
   # nftables table: drop all egress except: (a) traffic on the WG interface,
   # (b) traffic TO the WG peer endpoint (so the tunnel can establish), and
   # (c) local-loopback. Inbound is left to whatever your existing policy is.
-  note "installing nftables kill-switch (table 'badtv-killswitch')"
+  note "installing nftables kill-switch (table 'radtv-killswitch')"
   local peer_endpoint
   peer_endpoint="$(awk -F' *= *' '/^[[:space:]]*Endpoint/ {gsub(":.*","",$2); print $2; exit}' "$CONF_DST" || true)"
   if [[ -z "$peer_endpoint" ]]; then
     warn "Could not parse Endpoint from $CONF_DST -- kill-switch skipped."
     return
   fi
-  cat > /etc/nftables.d/badtv-killswitch.nft <<EOF
-table inet badtv-killswitch {
+  cat > /etc/nftables.d/radtv-killswitch.nft <<EOF
+table inet radtv-killswitch {
     chain output {
         type filter hook output priority -100; policy accept;
         oifname "lo" accept
@@ -97,21 +97,21 @@ table inet badtv-killswitch {
         meta skuid root accept comment "let root resolve DNS to bring tunnel up"
         ct state established,related accept
         # Drop everything else if the WG iface is not up.
-        oifname != "${IFACE}" log prefix "[badtv-killswitch drop] " level info
+        oifname != "${IFACE}" log prefix "[radtv-killswitch drop] " level info
         oifname != "${IFACE}" drop
     }
 }
 EOF
   run "mkdir -p /etc/nftables.d"
-  run "nft -f /etc/nftables.d/badtv-killswitch.nft"
+  run "nft -f /etc/nftables.d/radtv-killswitch.nft"
   ok "kill-switch active for endpoint $peer_endpoint"
 }
 
 drop_kill_switch() {
-  if [[ -f /etc/nftables.d/badtv-killswitch.nft ]]; then
+  if [[ -f /etc/nftables.d/radtv-killswitch.nft ]]; then
     note "removing kill-switch"
-    run "nft delete table inet badtv-killswitch 2>/dev/null || true"
-    run "rm -f /etc/nftables.d/badtv-killswitch.nft"
+    run "nft delete table inet radtv-killswitch 2>/dev/null || true"
+    run "rm -f /etc/nftables.d/radtv-killswitch.nft"
     ok "kill-switch removed"
   fi
 }
@@ -164,7 +164,7 @@ show_status() {
   else
     echo "interface: down"
   fi
-  if [[ -f /etc/nftables.d/badtv-killswitch.nft ]]; then
+  if [[ -f /etc/nftables.d/radtv-killswitch.nft ]]; then
     echo "kill-switch: installed"
   else
     echo "kill-switch: not installed"

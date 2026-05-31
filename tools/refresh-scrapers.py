@@ -43,7 +43,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG_PATH = os.path.join(ROOT, "addons", "scraper-catalog.json")
 
 HTTP_TIMEOUT = 20
-USER_AGENT = "B@Dtv-catalog-refresh/2.0 (+https://github.com/jimmershere/badtv)"
+USER_AGENT = "R&Dtv-catalog-refresh/2.0 (+https://github.com/jimmershere/radtv)"
 
 
 # --- HTTP -------------------------------------------------------------------
@@ -160,7 +160,7 @@ def _print_summary(catalog: Dict[str, Any]) -> None:
             st = repo.get("status", "unknown")
             by_status[st] = by_status.get(st, 0) + 1
             rows.append(f"  {st:11} {scraper['id']:12} {repo.get('label',''):28} v{repo.get('version','') or '?':10} <- {repo['url']}")
-    print("--- B@Dtv scraper catalog -------------------------------------------------")
+    print("--- R&Dtv scraper catalog -------------------------------------------------")
     print(f"updated: {catalog.get('updated')}")
     print("status counts:", ", ".join(f"{k}={v}" for k, v in sorted(by_status.items())))
     print()
@@ -170,7 +170,7 @@ def _print_summary(catalog: Dict[str, Any]) -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Refresh the B@Dtv scraper catalog.")
+    parser = argparse.ArgumentParser(description="Refresh the R&Dtv scraper catalog.")
     parser.add_argument("--only-id", action="append", default=[], help="Limit to these scraper ids (repeatable).")
     parser.add_argument("--dry-run", action="store_true", help="Probe but don't write the catalog back.")
     parser.add_argument("--print-summary", action="store_true", help="Print a status table after probing.")

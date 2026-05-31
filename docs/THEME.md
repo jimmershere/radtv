@@ -1,11 +1,11 @@
-# B@Dtv Theme — The Black Donnellys edition
+# R&Dtv Theme — The Black Donnellys edition
 
 > *"Brilliant but cancelled."* — fitting heritage.
 
 NBC's *The Black Donnellys* (2007) followed four Irish-American brothers
 running a bar in Hell's Kitchen. The show's look — warm interior light,
 brick, smoke, deep emerald accents, parchment-yellow pub lamps, the muted
-red of bricks and brake lights — is what B@Dtv borrows.
+red of bricks and brake lights — is what R&Dtv borrows.
 
 ## Vibe
 
@@ -35,7 +35,7 @@ Source of truth: [`../assets/colors/tokens.md`](../assets/colors/tokens.md).
 | `smoke`          | `#3A332D` | Disabled / muted.                          |
 | `blood`          | `#3F0707` | Critical accents.                          |
 
-## Wordmark — "B@Dtv"
+## Wordmark — "R&Dtv"
 
 - **B**, **D**, **t**, **v** in `parchment`, weight 700, Cinzel (or any
   Trajan-alike serif). `t` and `v` italicized for tension.
@@ -56,12 +56,12 @@ Source of truth: [`../assets/colors/tokens.md`](../assets/colors/tokens.md).
 
 Drop-in `<colors>` XML files, one per supported skin:
 
-- [`../build/wizard/resources/skin/arctic-zephyr-reloaded/colors/badtv.xml`](../build/wizard/resources/skin/arctic-zephyr-reloaded/colors/badtv.xml)
-- [`../build/wizard/resources/skin/estuary-mod-v2/colors/badtv.xml`](../build/wizard/resources/skin/estuary-mod-v2/colors/badtv.xml)
-- [`../build/wizard/resources/skin/estuary/colors/badtv.xml`](../build/wizard/resources/skin/estuary/colors/badtv.xml)
+- [`../build/wizard/resources/skin/arctic-zephyr-reloaded/colors/radtv.xml`](../build/wizard/resources/skin/arctic-zephyr-reloaded/colors/radtv.xml)
+- [`../build/wizard/resources/skin/estuary-mod-v2/colors/radtv.xml`](../build/wizard/resources/skin/estuary-mod-v2/colors/radtv.xml)
+- [`../build/wizard/resources/skin/estuary/colors/radtv.xml`](../build/wizard/resources/skin/estuary/colors/radtv.xml)
 
-The wizard's "Apply B@Dtv theme" action copies the right file into the right
-place and selects the `badtv` color theme. Manual copy is one command — see
+The wizard's "Apply R&Dtv theme" action copies the right file into the right
+place and selects the `radtv` color theme. Manual copy is one command — see
 [`../assets/skin/README.md`](../assets/skin/README.md).
 
 ## Do / Don't

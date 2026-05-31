@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="B@Dtv fanart">
-  <title>B@Dtv fanart</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="R&Dtv fanart">
+  <title>R&Dtv fanart</title>
   <defs>
     <linearGradient id="vignette" cx="0.5" cy="0.5" r="0.8">
       <stop offset="0"   stop-color="#000" stop-opacity="0"/>
@@ -31,7 +31,7 @@
   <!-- faint window light spill, lower right -->
   <polygon points="1300,0 1920,0 1920,540 1500,540" fill="#D4A24C" opacity="0.05"/>
 
-  <!-- B@Dtv wordmark, lower-left corner -->
+  <!-- R&Dtv wordmark, lower-left corner -->
   <g transform="translate(160 880)" font-family="Cinzel, Georgia, serif" font-weight="700">
     <text x="0" y="0" font-size="160" fill="#E8DCC0">B</text>
     <g transform="translate(170 0) rotate(6)">

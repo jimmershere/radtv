@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-  <addon id="repository.badtv"
-         name="B@Dtv Repository"
+  <addon id="repository.radtv"
+         name="R&amp;Dtv Repository"
          version="2.0.1"
          provider-name="TheClawFirm">
-    <extension point="xbmc.addon.repository" name="B@Dtv Repository">
+    <extension point="xbmc.addon.repository" name="R&amp;Dtv Repository">
       <dir minversion="19.0.0">
-        <info compressed="false">https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml</info>
-        <checksum>https://raw.githubusercontent.com/jimmershere/badtv/main/build/repository/addons.xml.md5</checksum>
-        <datadir zip="true">https://github.com/jimmershere/badtv/raw/main/dist/</datadir>
+        <info compressed="false">https://raw.githubusercontent.com/jimmershere/radtv/main/build/repository/addons.xml</info>
+        <checksum>https://raw.githubusercontent.com/jimmershere/radtv/main/build/repository/addons.xml.md5</checksum>
+        <datadir zip="true">https://github.com/jimmershere/radtv/raw/main/dist/</datadir>
       </dir>
     </extension>
     <extension point="xbmc.addon.metadata">
-      <summary lang="en_GB">B@Dtv addon repository</summary>
-      <description lang="en_GB">Package index for the B@Dtv wizard and companion addons.</description>
+      <summary lang="en_GB">R&amp;Dtv addon repository</summary>
+      <description lang="en_GB">Package index for the R&amp;Dtv wizard and companion addons.</description>
       <license>GPL-3.0-only</license>
       <platform>all</platform>
       <assets>
@@ -23,8 +23,8 @@
     </extension>
   </addon>
 
-  <addon id="script.badtv.wizard"
-         name="B@Dtv Wizard"
+  <addon id="script.radtv.wizard"
+         name="R&amp;Dtv Wizard"
          version="2.0.0"
          provider-name="TheClawFirm">
     <requires>
@@ -34,8 +34,8 @@
       <provides>executable</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
-      <summary lang="en_GB">B@Dtv setup wizard — Hell's Kitchen-grade Kodi build</summary>
-      <description lang="en_GB">B@Dtv is TheClawFirm's pre-configured Kodi build with a Black Donnellys-inspired UI. This wizard installs the curated addon stack, wires up Real-Debrid and Trakt, drops in a merged IPTV playlist with EPG, applies the B@Dtv color theme to your skin, and (optionally) mounts your floor2 media library.</description>
+      <summary lang="en_GB">R&amp;Dtv setup wizard — Hell's Kitchen-grade Kodi build</summary>
+      <description lang="en_GB">R&amp;Dtv is TheClawFirm's pre-configured Kodi build with a Black Donnellys-inspired UI. This wizard installs the curated addon stack, wires up Real-Debrid and Trakt, drops in a merged IPTV playlist with EPG, applies the R&amp;Dtv color theme to your skin, and (optionally) mounts your floor2 media library.</description>
       <license>GPL-3.0-only</license>
       <platform>all</platform>
       <assets>

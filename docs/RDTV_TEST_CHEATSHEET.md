@@ -2,7 +2,7 @@
 
 Generated: 2026-05-31 12:52 UTC
 
-Use this as a safe smoke-test guide for the R&Dtv / B@Dtv media platform. It intentionally lists credential handover paths but never includes secret values.
+Use this as a safe smoke-test guide for the R&Dtv media platform. It intentionally lists credential handover paths but never includes secret values.
 
 ## Access points
 
@@ -116,10 +116,10 @@ make -C '/app/warp/R&Dtv' check
 
 Kodi client checks:
 
-- B@Dtv Wizard is installed under Program add-ons.
+- R&Dtv Wizard is installed under Program add-ons.
 - PVR IPTV Simple Client is enabled.
 - TV guide populates.
-- B@Dtv skin color override appears for supported skins.
+- R&Dtv skin color override appears for supported skins.
 - Jellyfin for Kodi can point at `http://192.168.1.206:8096`.
 
 ## Repo/package checks
@@ -134,8 +134,8 @@ Pass criteria:
 
 - XML parse succeeds.
 - Wizard imports succeed.
-- `script.badtv.wizard-2.0.0.zip` lints clean.
-- `repository.badtv-2.0.1.zip` lints clean.
+- `script.radtv.wizard-2.0.0.zip` lints clean.
+- `repository.radtv-2.0.1.zip` lints clean.
 
 ## Troubleshooting quick hits
 

@@ -1,5 +1,5 @@
 name: build-iptv
-# Daily run that rebuilds iptv/dist/badtv.m3u + badtv.xml from
+# Daily run that rebuilds iptv/dist/radtv.m3u + radtv.xml from
 # iptv/sources.yaml and commits the result back to main. Without this the
 # raw.githubusercontent.com URLs the wizard hardcodes return 404.
 
@@ -43,21 +43,21 @@ jobs:
           # header so end-user PVR clients can find the EPG. Without this
           # override the script defaults to file:// against the runner's
           # ephemeral path, which obviously doesn't resolve in users' Kodi.
-          EPG_PUBLIC_URL: "https://raw.githubusercontent.com/${{ github.repository }}/main/iptv/dist/badtv.xml"
+          EPG_PUBLIC_URL: "https://raw.githubusercontent.com/${{ github.repository }}/main/iptv/dist/radtv.xml"
         run: |
           python3 iptv/build-playlist.py --epg-url "$EPG_PUBLIC_URL"
           echo "--- output ---"
           ls -lh iptv/dist/
           echo "--- m3u header ---"
-          head -1 iptv/dist/badtv.m3u
+          head -1 iptv/dist/radtv.m3u
 
       - name: Sanity-check sizes
         run: |
           # M3U should be > 1 KB and contain #EXTM3U; XML should be > 1 KB
           # and contain a <tv> element. Anything smaller means every source
           # failed and we shouldn't commit the regression.
-          m3u="iptv/dist/badtv.m3u"
-          xml="iptv/dist/badtv.xml"
+          m3u="iptv/dist/radtv.m3u"
+          xml="iptv/dist/radtv.xml"
           [[ -s "$m3u" && $(stat -c%s "$m3u") -gt 1024 ]] || { echo "m3u too small"; exit 1; }
           [[ -s "$xml" && $(stat -c%s "$xml") -gt 1024 ]] || { echo "xml too small"; exit 1; }
           grep -q '#EXTM3U' "$m3u" || { echo "no #EXTM3U header"; exit 1; }
@@ -70,13 +70,13 @@ jobs:
 
       - name: Commit and push if changed
         env:
-          GIT_AUTHOR_NAME: "B@Dtv catalog bot"
-          GIT_AUTHOR_EMAIL: "badtv-bot@users.noreply.github.com"
-          GIT_COMMITTER_NAME: "B@Dtv catalog bot"
-          GIT_COMMITTER_EMAIL: "badtv-bot@users.noreply.github.com"
+          GIT_AUTHOR_NAME: "R&Dtv catalog bot"
+          GIT_AUTHOR_EMAIL: "radtv-bot@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "R&Dtv catalog bot"
+          GIT_COMMITTER_EMAIL: "radtv-bot@users.noreply.github.com"
         run: |
           # iptv/dist/* is gitignored; force-add the two artifacts we care about.
-          git add -f iptv/dist/badtv.m3u iptv/dist/badtv.xml
+          git add -f iptv/dist/radtv.m3u iptv/dist/radtv.xml
           if git diff --cached --quiet; then
             echo "No playlist changes."
             exit 0

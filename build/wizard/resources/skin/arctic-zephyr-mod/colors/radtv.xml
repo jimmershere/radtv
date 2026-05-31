@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  B@Dtv color override for Arctic Zephyr MOD (skin.arctic.zephyr.mod)
+  R&Dtv color override for Arctic Zephyr MOD (skin.arctic.zephyr.mod)
   -------------------------------------------------------------------
   Drop this file at:
-      <kodi>/addons/skin.arctic.zephyr.mod/colors/badtv.xml
-  Then in Kodi: Settings > Skin > Colours > badtv.
+      <kodi>/addons/skin.arctic.zephyr.mod/colors/radtv.xml
+  Then in Kodi: Settings > Skin > Colours > radtv.
 
-  The host-side bootstrap (`./badtv setup`) does the copy + selection
+  The host-side bootstrap (`./radtv setup`) does the copy + selection
   for you. Tokens come from assets/colors/tokens.md.
 -->
 <colors>

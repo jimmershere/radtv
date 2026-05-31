@@ -3,7 +3,7 @@
 << /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R] /Count 3 >>
 endobj
 3 0 obj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
@@ -12,165 +12,152 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
 endobj
 5 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+<< /Length 3458 >>
+stream
+BT /F2 18 Tf 54 760 Td (R&Dtv 2026 Test Cheat Sheet) Tj ET
+BT /F1 9 Tf 54 728 Td (Generated: 2026-05-31 12:52 UTC) Tj ET
+BT /F1 9 Tf 54 708 Td (Use this as a safe smoke-test guide for the R&Dtv media platform. It intentionally lists) Tj ET
+BT /F1 9 Tf 54 696 Td (credential handover paths but never includes secret values.) Tj ET
+BT /F2 13 Tf 54 676 Td (Access points) Tj ET
+BT /F1 9 Tf 54 650 Td (• Jellyfin: http://192.168.1.206:8096) Tj ET
+BT /F1 9 Tf 54 638 Td (• Jellyfin HTTPS port mapping: 8920 \(TLS still needs explicit setup before use\)) Tj ET
+BT /F1 9 Tf 54 626 Td (• Prowlarr: http://192.168.1.206:9696) Tj ET
+BT /F1 9 Tf 54 614 Td (• Sonarr: http://192.168.1.206:8989) Tj ET
+BT /F1 9 Tf 54 602 Td (• Radarr: http://192.168.1.206:7878) Tj ET
+BT /F1 9 Tf 54 590 Td (• rdt-client: http://192.168.1.206:6500) Tj ET
+BT /F1 9 Tf 54 578 Td (• qBittorrent Web UI: http://192.168.1.206:8091) Tj ET
+BT /F1 9 Tf 54 566 Td (• Credential handover file on floor2: /datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json) Tj ET
+BT /F2 13 Tf 54 546 Td (Credential handover rules) Tj ET
+BT /F1 9 Tf 54 520 Td (• Do not paste credential contents into chat, shell history, Git, screenshots, or issue) Tj ET
+BT /F1 9 Tf 54 508 Td (• trackers.) Tj ET
+BT /F1 9 Tf 54 496 Td (• Retrieve Jellyfin credentials only over a trusted SSH session or password manager workflow.) Tj ET
+BT /F1 9 Tf 54 484 Td (• Expected credential file mode: 600 floor2 floor2.) Tj ET
+BT /F1 9 Tf 54 472 Td (• If the file is exposed, rotate the Jellyfin admin password and API key immediately.) Tj ET
+BT /F2 13 Tf 54 452 Td (Floor2 stack health) Tj ET
+BT /F1 9 Tf 54 426 Td (Run from a trusted machine with SSH access:) Tj ET
+BT /F1 9 Tf 54 406 Td (ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker compose ps') Tj ET
+BT /F1 9 Tf 54 394 Td (ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker ps --filter name=badtv-) Tj ET
+BT /F1 9 Tf 54 382 Td (jellyfin --format "{{.Names}} {{.Status}} {{.Ports}}"') Tj ET
+BT /F1 9 Tf 54 370 Td (ssh floor2@192.168.1.206 'stat -c "%a %U %G %n" /datapool/preserved/badtv-arr/jellyfin/rdtv-) Tj ET
+BT /F1 9 Tf 54 358 Td (admin.json') Tj ET
+BT /F1 9 Tf 54 338 Td (Pass criteria:) Tj ET
+BT /F1 9 Tf 54 318 Td (• Jellyfin is Up and healthy.) Tj ET
+BT /F1 9 Tf 54 306 Td (• Credential file reports 600 floor2 floor2.) Tj ET
+BT /F1 9 Tf 54 294 Td (• Existing arr/download services remain running.) Tj ET
+BT /F2 13 Tf 54 274 Td (Jellyfin smoke test) Tj ET
+BT /F1 9 Tf 54 248 Td (1. Open http://192.168.1.206:8096.) Tj ET
+BT /F1 9 Tf 54 236 Td (2. Sign in using the handover credentials from floor2.) Tj ET
+BT /F1 9 Tf 54 224 Td (3. Confirm libraries exist:) Tj ET
+BT /F1 9 Tf 54 212 Td (   - Movies) Tj ET
+BT /F1 9 Tf 54 200 Td (   - Shows) Tj ET
+BT /F1 9 Tf 54 188 Td (4. Open one known movie or episode detail page.) Tj ET
+BT /F1 9 Tf 54 176 Td (5. Confirm metadata/art loads.) Tj ET
+BT /F1 9 Tf 54 164 Td (6. Start playback on LAN.) Tj ET
+BT /F1 9 Tf 54 152 Td (7. Confirm no write access is needed from Jellyfin: media is mounted read-only as /media:ro.) Tj ET
+BT /F2 13 Tf 54 132 Td (Jellyfin API/library check) Tj ET
+BT /F1 9 Tf 54 106 Td (Use this only after loading credentials into local environment variables or a password manager-) Tj ET
+BT /F1 9 Tf 54 94 Td (backed shell. Do not inline secrets.) Tj ET
+BT /F2 18 Tf 54 74 Td (Example placeholders only. Do not commit real values.) Tj ET
+endstream
 endobj
 6 0 obj
-<< /Length 3052 >>
-stream
-BT
-/F2 18 Tf 54 740 Td (R&Dtv 2026 Test Cheat Sheet) Tj
-/F1 9 Tf 54 722 Td (Generated: 2026-05-31 12:52 UTC) Tj
-/F1 9 Tf 54 696 Td (Generated: 2026-05-31 12:52 UTC) Tj
-/F1 9 Tf 54 678 Td (Use this as a safe smoke-test guide for the R&Dtv / B@Dtv media platform. It) Tj
-/F1 9 Tf 54 666 Td (intentionally lists credential handover paths but never includes secret values.) Tj
-/F2 13 Tf 54 644 Td (Access points) Tj
-/F1 9 Tf 54 620 Td (? Jellyfin: `http://192.168.1.206:8096`) Tj
-/F1 9 Tf 54 608 Td (? Jellyfin HTTPS port mapping: `8920` \(TLS still needs explicit setup before use\)) Tj
-/F1 9 Tf 54 596 Td (? Prowlarr: `http://192.168.1.206:9696`) Tj
-/F1 9 Tf 54 584 Td (? Sonarr: `http://192.168.1.206:8989`) Tj
-/F1 9 Tf 54 572 Td (? Radarr: `http://192.168.1.206:7878`) Tj
-/F1 9 Tf 54 560 Td (? rdt-client: `http://192.168.1.206:6500`) Tj
-/F1 9 Tf 54 548 Td (? qBittorrent Web UI: `http://192.168.1.206:8091`) Tj
-/F1 9 Tf 54 536 Td (? Credential handover file on floor2: `/datapool/preserved/badtv-arr/jellyfin/rdtv-) Tj
-/F1 9 Tf 54 524 Td (  admin.json`) Tj
-/F2 13 Tf 54 502 Td (Credential handover rules) Tj
-/F1 9 Tf 54 478 Td (? Do not paste credential contents into chat, shell history, Git, screenshots, or) Tj
-/F1 9 Tf 54 466 Td (  issue trackers.) Tj
-/F1 9 Tf 54 454 Td (? Retrieve Jellyfin credentials only over a trusted SSH session or password manager) Tj
-/F1 9 Tf 54 442 Td (  workflow.) Tj
-/F1 9 Tf 54 430 Td (? Expected credential file mode: `600 floor2 floor2`.) Tj
-/F1 9 Tf 54 418 Td (? If the file is exposed, rotate the Jellyfin admin password and API key) Tj
-/F1 9 Tf 54 406 Td (  immediately.) Tj
-/F2 13 Tf 54 384 Td (Floor2 stack health) Tj
-/F1 9 Tf 54 360 Td (Run from a trusted machine with SSH access:) Tj
-/F1 9 Tf 54 336 Td (ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker compose ps') Tj
-/F1 9 Tf 54 324 Td (ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker ps --filter) Tj
-/F1 9 Tf 54 312 Td (name=badtv-jellyfin --format "{{.Names}} {{.Status}} {{.Ports}}"') Tj
-/F1 9 Tf 54 300 Td (ssh floor2@192.168.1.206 'stat -c "%a %U %G %n" /datapool/preserved/badtv-) Tj
-/F1 9 Tf 54 288 Td (arr/jellyfin/rdtv-admin.json') Tj
-/F1 9 Tf 54 264 Td (Pass criteria:) Tj
-/F1 9 Tf 54 246 Td (? Jellyfin is `Up` and `healthy`.) Tj
-/F1 9 Tf 54 234 Td (? Credential file reports `600 floor2 floor2`.) Tj
-/F1 9 Tf 54 222 Td (? Existing *arr/download services remain running.) Tj
-/F2 13 Tf 54 200 Td (Jellyfin smoke test) Tj
-/F1 9 Tf 54 176 Td (1. Open `http://192.168.1.206:8096`.) Tj
-/F1 9 Tf 54 164 Td (2. Sign in using the handover credentials from floor2.) Tj
-/F1 9 Tf 54 152 Td (3. Confirm libraries exist:) Tj
-/F1 9 Tf 54 140 Td (   - Movies) Tj
-/F1 9 Tf 54 128 Td (   - Shows) Tj
-/F1 9 Tf 54 116 Td (4. Open one known movie or episode detail page.) Tj
-/F1 9 Tf 54 104 Td (5. Confirm metadata/art loads.) Tj
-/F1 9 Tf 54 92 Td (6. Start playback on LAN.) Tj
-/F1 9 Tf 54 80 Td (7. Confirm no write access is needed from Jellyfin: media is mounted read-only as) Tj
-/F1 9 Tf 54 68 Td (  `/media:ro`.) Tj
-ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
 endobj
 7 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+<< /Length 2881 >>
+stream
+BT /F1 9 Tf 54 760 Td (export JELLYFIN_URL='http://192.168.1.206:8096') Tj ET
+BT /F1 9 Tf 54 748 Td (export JELLYFIN_API_KEY='<from password manager>') Tj ET
+BT /F1 9 Tf 54 736 Td (curl -fsS -H "X-Emby-Token: $JELLYFIN_API_KEY" "$JELLYFIN_URL/Library/VirtualFolders") Tj ET
+BT /F1 9 Tf 54 716 Td (Pass criteria:) Tj ET
+BT /F1 9 Tf 54 696 Td (• Response includes Movies and Shows.) Tj ET
+BT /F2 13 Tf 54 676 Td (Prowlarr / Byparr check) Tj ET
+BT /F1 9 Tf 54 650 Td (ssh floor2@192.168.1.206 'docker ps --format "{{.Names}} {{.Status}}" | grep -E) Tj ET
+BT /F1 9 Tf 54 638 Td ("badtv-\(prowlarr|byparr|flaresolverr\)" || true') Tj ET
+BT /F1 9 Tf 54 618 Td (Pass criteria:) Tj ET
+BT /F1 9 Tf 54 598 Td (• Prowlarr is running.) Tj ET
+BT /F1 9 Tf 54 586 Td (• Byparr is preferred for the 2026 path.) Tj ET
+BT /F1 9 Tf 54 574 Td (• If badtv-flaresolverr is still present, it is legacy and should be replaced by the Byparr) Tj ET
+BT /F1 9 Tf 54 562 Td (• compose path when the bootstrap cleanup runs.) Tj ET
+BT /F2 13 Tf 54 542 Td (Sonarr/Radarr sanity) Tj ET
+BT /F1 9 Tf 54 516 Td (Open the UIs:) Tj ET
+BT /F1 9 Tf 54 496 Td (• Sonarr: http://192.168.1.206:8989) Tj ET
+BT /F1 9 Tf 54 484 Td (• Radarr: http://192.168.1.206:7878) Tj ET
+BT /F1 9 Tf 54 464 Td (Check:) Tj ET
+BT /F1 9 Tf 54 444 Td (• Root folders point under /media/tv and /media/movies.) Tj ET
+BT /F1 9 Tf 54 432 Td (• Download clients are present.) Tj ET
+BT /F1 9 Tf 54 420 Td (• Remote path mapping exists for rdt-client where needed.) Tj ET
+BT /F1 9 Tf 54 408 Td (• Prowlarr sync is enabled.) Tj ET
+BT /F2 13 Tf 54 388 Td (Download clients) Tj ET
+BT /F1 9 Tf 54 362 Td (Check containers:) Tj ET
+BT /F1 9 Tf 54 342 Td (ssh floor2@192.168.1.206 'docker ps --format "{{.Names}} {{.Status}}" | grep -E) Tj ET
+BT /F1 9 Tf 54 330 Td ("badtv-\(rdtclient|qbittorrent|gluetun|sabnzbd\)" || true') Tj ET
+BT /F1 9 Tf 54 310 Td (Expected:) Tj ET
+BT /F1 9 Tf 54 290 Td (• badtv-rdtclient is healthy/running.) Tj ET
+BT /F1 9 Tf 54 278 Td (• badtv-gluetun is healthy before using qBittorrent.) Tj ET
+BT /F1 9 Tf 54 266 Td (• badtv-qbittorrent is routed through Gluetun.) Tj ET
+BT /F1 9 Tf 54 254 Td (• badtv-sabnzbd is present after Usenet setup.) Tj ET
+BT /F2 13 Tf 54 234 Td (IPTV / Kodi checks) Tj ET
+BT /F1 9 Tf 54 208 Td (Local repo validation:) Tj ET
+BT /F1 9 Tf 54 188 Td (make -C '/app/warp/R&Dtv' check) Tj ET
+BT /F1 9 Tf 54 168 Td (Kodi client checks:) Tj ET
+BT /F1 9 Tf 54 148 Td (• R&Dtv Wizard is installed under Program add-ons.) Tj ET
+BT /F1 9 Tf 54 136 Td (• PVR IPTV Simple Client is enabled.) Tj ET
+BT /F1 9 Tf 54 124 Td (• TV guide populates.) Tj ET
+BT /F1 9 Tf 54 112 Td (• R&Dtv skin color override appears for supported skins.) Tj ET
+BT /F1 9 Tf 54 100 Td (• Jellyfin for Kodi can point at http://192.168.1.206:8096.) Tj ET
+BT /F2 13 Tf 54 80 Td (Repo/package checks) Tj ET
+endstream
 endobj
 8 0 obj
-<< /Length 2498 >>
-stream
-BT
-/F2 13 Tf 54 736 Td (Jellyfin API/library check) Tj
-/F1 9 Tf 54 712 Td (Use this only after loading credentials into local environment variables or a password) Tj
-/F1 9 Tf 54 700 Td (manager-backed shell. Do not inline secrets.) Tj
-/F2 18 Tf 54 676 Td (Example placeholders only. Do not commit real values.) Tj
-/F1 9 Tf 54 658 Td (Generated: 2026-05-31 12:52 UTC) Tj
-/F1 9 Tf 54 638 Td (export JELLYFIN_URL='http://192.168.1.206:8096') Tj
-/F1 9 Tf 54 626 Td (export JELLYFIN_API_KEY='<from password manager>') Tj
-/F1 9 Tf 54 614 Td (curl -fsS -H "X-Emby-Token: $JELLYFIN_API_KEY" "$JELLYFIN_URL/Library/VirtualFolders") Tj
-/F1 9 Tf 54 590 Td (Pass criteria:) Tj
-/F1 9 Tf 54 572 Td (? Response includes `Movies` and `Shows`.) Tj
-/F2 13 Tf 54 550 Td (Prowlarr / Byparr check) Tj
-/F1 9 Tf 54 520 Td (ssh floor2@192.168.1.206 'docker ps --format "{{.Names}} {{.Status}}" | grep -E) Tj
-/F1 9 Tf 54 508 Td ("badtv-\(prowlarr|byparr|flaresolverr\)" || true') Tj
-/F1 9 Tf 54 484 Td (Pass criteria:) Tj
-/F1 9 Tf 54 466 Td (? Prowlarr is running.) Tj
-/F1 9 Tf 54 454 Td (? Byparr is preferred for the 2026 path.) Tj
-/F1 9 Tf 54 442 Td (? If `badtv-flaresolverr` is still present, it is legacy and should be replaced by) Tj
-/F1 9 Tf 54 430 Td (  the Byparr compose path when the bootstrap cleanup runs.) Tj
-/F2 13 Tf 54 408 Td (Sonarr/Radarr sanity) Tj
-/F1 9 Tf 54 384 Td (Open the UIs:) Tj
-/F1 9 Tf 54 366 Td (? Sonarr: `http://192.168.1.206:8989`) Tj
-/F1 9 Tf 54 354 Td (? Radarr: `http://192.168.1.206:7878`) Tj
-/F1 9 Tf 54 336 Td (Check:) Tj
-/F1 9 Tf 54 318 Td (? Root folders point under `/media/tv` and `/media/movies`.) Tj
-/F1 9 Tf 54 306 Td (? Download clients are present.) Tj
-/F1 9 Tf 54 294 Td (? Remote path mapping exists for rdt-client where needed.) Tj
-/F1 9 Tf 54 282 Td (? Prowlarr sync is enabled.) Tj
-/F2 13 Tf 54 260 Td (Download clients) Tj
-/F1 9 Tf 54 236 Td (Check containers:) Tj
-/F1 9 Tf 54 212 Td (ssh floor2@192.168.1.206 'docker ps --format "{{.Names}} {{.Status}}" | grep -E) Tj
-/F1 9 Tf 54 200 Td ("badtv-\(rdtclient|qbittorrent|gluetun|sabnzbd\)" || true') Tj
-/F1 9 Tf 54 176 Td (Expected:) Tj
-/F1 9 Tf 54 158 Td (? `badtv-rdtclient` is healthy/running.) Tj
-/F1 9 Tf 54 146 Td (? `badtv-gluetun` is healthy before using qBittorrent.) Tj
-/F1 9 Tf 54 134 Td (? `badtv-qbittorrent` is routed through Gluetun.) Tj
-/F1 9 Tf 54 122 Td (? `badtv-sabnzbd` is present after Usenet setup.) Tj
-/F2 13 Tf 54 100 Td (IPTV / Kodi checks) Tj
-/F1 9 Tf 54 76 Td (Local repo validation:) Tj
-ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
 endobj
 9 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+<< /Length 1795 >>
+stream
+BT /F1 9 Tf 54 760 Td (make -C '/app/warp/R&Dtv' repo) Tj ET
+BT /F1 9 Tf 54 748 Td (make -C '/app/warp/R&Dtv' check) Tj ET
+BT /F1 9 Tf 54 736 Td (python3 /app/warp/R&Dtv/tools/lint-zips.py) Tj ET
+BT /F1 9 Tf 54 716 Td (Pass criteria:) Tj ET
+BT /F1 9 Tf 54 696 Td (• XML parse succeeds.) Tj ET
+BT /F1 9 Tf 54 684 Td (• Wizard imports succeed.) Tj ET
+BT /F1 9 Tf 54 672 Td (• script.radtv.wizard-2.0.0.zip lints clean.) Tj ET
+BT /F1 9 Tf 54 660 Td (• repository.radtv-2.0.1.zip lints clean.) Tj ET
+BT /F2 13 Tf 54 640 Td (Troubleshooting quick hits) Tj ET
+BT /F1 9 Tf 54 614 Td (• Jellyfin not reachable: ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker) Tj ET
+BT /F1 9 Tf 54 602 Td (• compose logs --tail=200 jellyfin') Tj ET
+BT /F1 9 Tf 54 590 Td (• Credential rejected: retrieve the handover file again, verify no stale copied password, then) Tj ET
+BT /F1 9 Tf 54 578 Td (• rotate if needed.) Tj ET
+BT /F1 9 Tf 54 566 Td (• Movies/Shows empty: verify /datapool/media/movies and /datapool/media/tv contain media and) Tj ET
+BT /F1 9 Tf 54 554 Td (• run a Jellyfin library scan.) Tj ET
+BT /F1 9 Tf 54 542 Td (• qBittorrent cannot reach network: check Gluetun health first.) Tj ET
+BT /F1 9 Tf 54 530 Td (• IPTV fetch flaky: rerun; remote EPG providers sometimes truncate large responses.) Tj ET
+BT /F2 13 Tf 54 510 Td (Done criteria) Tj ET
+BT /F1 9 Tf 54 484 Td (• Jellyfin opens from LAN.) Tj ET
+BT /F1 9 Tf 54 472 Td (• Handover admin login works.) Tj ET
+BT /F1 9 Tf 54 460 Td (• Movies and Shows libraries exist.) Tj ET
+BT /F1 9 Tf 54 448 Td (• At least one media item can be browsed or played.) Tj ET
+BT /F1 9 Tf 54 436 Td (• floor2 compose stack is healthy.) Tj ET
+BT /F1 9 Tf 54 424 Td (• make -C '/app/warp/R&Dtv' check exits 0.) Tj ET
+endstream
 endobj
 10 0 obj
-<< /Length 2128 >>
-stream
-BT
-/F1 9 Tf 54 740 Td (make -C '/app/warp/R&Dtv' check) Tj
-/F1 9 Tf 54 716 Td (Kodi client checks:) Tj
-/F1 9 Tf 54 698 Td (? B@Dtv Wizard is installed under Program add-ons.) Tj
-/F1 9 Tf 54 686 Td (? PVR IPTV Simple Client is enabled.) Tj
-/F1 9 Tf 54 674 Td (? TV guide populates.) Tj
-/F1 9 Tf 54 662 Td (? B@Dtv skin color override appears for supported skins.) Tj
-/F1 9 Tf 54 650 Td (? Jellyfin for Kodi can point at `http://192.168.1.206:8096`.) Tj
-/F2 13 Tf 54 628 Td (Repo/package checks) Tj
-/F1 9 Tf 54 598 Td (make -C '/app/warp/R&Dtv' repo) Tj
-/F1 9 Tf 54 586 Td (make -C '/app/warp/R&Dtv' check) Tj
-/F1 9 Tf 54 574 Td (python3 /app/warp/R&Dtv/tools/lint-zips.py) Tj
-/F1 9 Tf 54 550 Td (Pass criteria:) Tj
-/F1 9 Tf 54 532 Td (? XML parse succeeds.) Tj
-/F1 9 Tf 54 520 Td (? Wizard imports succeed.) Tj
-/F1 9 Tf 54 508 Td (? `script.badtv.wizard-2.0.0.zip` lints clean.) Tj
-/F1 9 Tf 54 496 Td (? `repository.badtv-2.0.1.zip` lints clean.) Tj
-/F2 13 Tf 54 474 Td (Troubleshooting quick hits) Tj
-/F1 9 Tf 54 450 Td (? Jellyfin not reachable: `ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-) Tj
-/F1 9 Tf 54 438 Td (  arr && docker compose logs --tail=200 jellyfin'`) Tj
-/F1 9 Tf 54 426 Td (? Credential rejected: retrieve the handover file again, verify no stale copied) Tj
-/F1 9 Tf 54 414 Td (  password, then rotate if needed.) Tj
-/F1 9 Tf 54 402 Td (? Movies/Shows empty: verify `/datapool/media/movies` and `/datapool/media/tv`) Tj
-/F1 9 Tf 54 390 Td (  contain media and run a Jellyfin library scan.) Tj
-/F1 9 Tf 54 378 Td (? qBittorrent cannot reach network: check Gluetun health first.) Tj
-/F1 9 Tf 54 366 Td (? IPTV fetch flaky: rerun; remote EPG providers sometimes truncate large responses.) Tj
-/F2 13 Tf 54 344 Td (Done criteria) Tj
-/F1 9 Tf 54 320 Td (? Jellyfin opens from LAN.) Tj
-/F1 9 Tf 54 308 Td (? Handover admin login works.) Tj
-/F1 9 Tf 54 296 Td (? Movies and Shows libraries exist.) Tj
-/F1 9 Tf 54 284 Td (? At least one media item can be browsed or played.) Tj
-/F1 9 Tf 54 272 Td (? floor2 compose stack is healthy.) Tj
-/F1 9 Tf 54 260 Td (? `make -C '/app/warp/R&Dtv' check` exits 0.) Tj
-ET
-endstream
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
 endobj
 xref
 0 11
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
-0000000127 00000 n 
-0000000197 00000 n 
-0000000272 00000 n 
-0000000408 00000 n 
-0000003512 00000 n 
-0000003648 00000 n 
-0000006198 00000 n 
-0000006335 00000 n 
-trailer
-<< /Size 11 /Root 1 0 R >>
+0000000128 00000 n 
+0000000198 00000 n 
+0000000273 00000 n 
+0000003783 00000 n 
+0000003919 00000 n 
+0000006852 00000 n 
+0000006988 00000 n 
+0000008835 00000 n 
+trailer << /Size 11 /Root 1 0 R >>
 startxref
-8516
+8972
 %%EOF

@@ -2,7 +2,7 @@
   "schema_version": 2,
   "updated": "2026-05-24T21:00:07Z",
   "generator": "manual + tools/refresh-scrapers.py",
-  "comment": "Canonical B@Dtv catalog of third-party Kodi addon repos. The bootstrap installs everything tagged `auto: true` directly. The wizard fetches the latest at runtime and falls back to this bundled copy when offline. Schema v2 adds `repo_zip_url` (the single-file repo zip Kodi-style repos serve at their root) and `addons_xml` (the URL listed INSIDE the repo's addon.xml, after picking the right <dir> block for the Kodi major). Live URLs verified 2026-05-24.",
+  "comment": "Canonical R&Dtv catalog of third-party Kodi addon repos. The bootstrap installs everything tagged `auto: true` directly. The wizard fetches the latest at runtime and falls back to this bundled copy when offline. Schema v2 adds `repo_zip_url` (the single-file repo zip Kodi-style repos serve at their root) and `addons_xml` (the URL listed INSIDE the repo's addon.xml, after picking the right <dir> block for the Kodi major). Live URLs verified 2026-05-24.",
   "scrapers": [
     {
       "id": "cocoscrapers",

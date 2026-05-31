@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - only true when running under Kodi
     xbmc = xbmcaddon = xbmcgui = xbmcvfs = None  # type: ignore
 
 
-ADDON_ID = "script.badtv.wizard"
+ADDON_ID = "script.radtv.wizard"
 
 
 def addon():
@@ -69,7 +69,7 @@ def set_setting(key: str, value: str) -> None:
         addon().setSetting(key, value)
 
 
-def notify(message: str, heading: str = "B@Dtv", icon: str = "") -> None:
+def notify(message: str, heading: str = "R&Dtv", icon: str = "") -> None:
     if HAS_KODI:
         xbmcgui.Dialog().notification(heading, message, icon or "info", 4000)
     else:
@@ -110,7 +110,7 @@ def text_input(heading: str, default: str = "") -> Optional[str]:
 
 
 def log(message: str, level: str = "info") -> None:
-    prefix = "[B@Dtv]"
+    prefix = "[R&Dtv]"
     if HAS_KODI:
         level_map = {
             "debug": xbmc.LOGDEBUG,

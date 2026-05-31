@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin shim around bootstrap.py. Lets users run `./badtv setup` without
+# Thin shim around bootstrap.py. Lets users run `./radtv setup` without
 # remembering to invoke python3 themselves.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"

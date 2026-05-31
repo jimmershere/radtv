@@ -1,8 +1,8 @@
-"""Load the B@Dtv scraper catalog at runtime.
+"""Load the R&Dtv scraper catalog at runtime.
 
 The wizard ships with a bundled copy of ``addons/scraper-catalog.json`` (so
 it always works offline). At runtime it tries to fetch the latest version
-from the user-configurable ``BADTV_REPO_RAW_URL`` first; on any failure
+from the user-configurable ``RADTV_REPO_RAW_URL`` first; on any failure
 (no network, 404, malformed JSON) it falls back to the bundled copy.
 
 The fetched copy is cached in the addon's user-data dir for 24 hours so the
@@ -23,7 +23,7 @@ from . import kodiutils as ku
 
 CACHE_TTL_SECONDS = 24 * 60 * 60          # 24h
 HTTP_TIMEOUT = 8
-USER_AGENT = "B@Dtv-wizard-catalog/2.0"
+USER_AGENT = "R&Dtv-wizard-catalog/2.0"
 
 
 def _bundled_path() -> str:
@@ -82,7 +82,7 @@ def load(*, force_refresh: bool = False) -> Dict[str, Any]:
     """Load the catalog. Hierarchy:
 
     1. fresh on-disk cache (<24h old) unless ``force_refresh``;
-    2. live fetch from ``BADTV_REPO_RAW_URL/addons/scraper-catalog.json``;
+    2. live fetch from ``RADTV_REPO_RAW_URL/addons/scraper-catalog.json``;
     3. previously-cached copy regardless of freshness;
     4. bundled copy that shipped with the wizard.
 
@@ -96,8 +96,8 @@ def load(*, force_refresh: bool = False) -> Dict[str, Any]:
             return cached
 
     repo_raw = ku.get_setting(
-        "badtv_repo_raw_url",
-        "https://raw.githubusercontent.com/jimmershere/badtv/main",
+        "radtv_repo_raw_url",
+        "https://raw.githubusercontent.com/jimmershere/radtv/main",
     ).rstrip("/")
     remote_url = f"{repo_raw}/addons/scraper-catalog.json"
     remote = _fetch_remote(remote_url)

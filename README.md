@@ -1,4 +1,5 @@
-# B@Dtv
+# R&Dtv
+![R&Dtv RAD BMX jellyfish logo](assets/branding/logo.svg)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-6B1A1F.svg)](LICENSE)
 ![Kodi](https://img.shields.io/badge/Kodi-19%2B%20(Matrix%2FNexus%2FOmega)-D4A24C)
@@ -13,7 +14,7 @@
 > the full diff and `docs/grey-area-streaming-2026.pdf` for the why.
 
 > **Read first**: [`DISCLAIMER.md`](DISCLAIMER.md) · [`NOTICE.md`](NOTICE.md) ·
-> [`docs/PRIVACY.md`](docs/PRIVACY.md). B@Dtv is GPL-3.0 packaging software
+> [`docs/PRIVACY.md`](docs/PRIVACY.md). R&Dtv is GPL-3.0 packaging software
 > with no warranty. You decide what to install and what to stream;
 > anonymization is not a license to infringe.
 
@@ -21,7 +22,7 @@
 > a back-bar full of streaming sources, and a wizard that actually does the
 > work instead of waving at you.
 
-**B@Dtv** (née *TerraKodi*) is TheClawFirm's pre-configured Kodi distribution
+**R&Dtv** (née *TerraKodi*) is TheClawFirm's pre-configured Kodi distribution
 with a **Black Donnellys**-inspired UI — the brilliant, brief NBC drama about
 four brothers running a Hell's Kitchen bar. The build pulls from the best
 free / lawful US linear sources, the strongest community scrapers, and
@@ -29,20 +30,20 @@ free / lawful US linear sources, the strongest community scrapers, and
 
 ## What ships
 
-- **`build/wizard/`** — `script.badtv.wizard`. A real Kodi script addon (not
+- **`build/wizard/`** — `script.radtv.wizard`. A real Kodi script addon (not
   a textviewer stub) with a menu of one-click actions: install the curated
   addon stack, wire PVR IPTV Simple Client to the bundled playlist,
-  authorize Real-Debrid + Trakt, drop in the B@Dtv color theme, add NAS
+  authorize Real-Debrid + Trakt, drop in the R&Dtv color theme, add NAS
   sources, kick a library scan.
-- **`build/repository/`** — `repository.badtv`. The Kodi repository
+- **`build/repository/`** — `repository.radtv`. The Kodi repository
   package that delivers the wizard.
 - **`iptv/`** — Declarative `sources.yaml` + a Python builder that merges
   Pluto / Plex Live / Samsung TV+ / Stirr / iptv-org news / sports / music /
-  international into a single deduped `badtv.m3u` + `badtv.xml`.
+  international into a single deduped `radtv.m3u` + `radtv.xml`.
 - **`assets/`** — Black Donnellys color tokens, SVG branding (logo, icon,
   fanart, splash), and drop-in skin color overrides for Arctic Zephyr
   Reloaded, Estuary MOD V2, and stock Estuary.
-- **`config/badtv.conf.example`** — single source of truth for floor2 host,
+- **`config/radtv.conf.example`** — single source of truth for floor2 host,
   repo URL, IPTV toggles, skin target.
 - **`install.sh` / `install.ps1`** — one-shot installer that writes
   `sources.xml`, `advancedsettings.xml`, `pvr.iptvsimple/settings.xml`,
@@ -57,9 +58,9 @@ free / lawful US linear sources, the strongest community scrapers, and
 ## Quick install
 
 ```bash
-git clone https://github.com/jimmershere/badtv.git
-cd badtv
-./badtv setup
+git clone https://github.com/jimmershere/radtv.git
+cd radtv
+./radtv setup
 ```
 
 That single command is the entire first run. It:
@@ -71,25 +72,25 @@ That single command is the entire first run. It:
    WireGuard / skip) with a kill-switch.
 3. Bootstraps `~/.kodi/userdata/` and writes a sane
    `advancedsettings.xml` for streaming.
-4. Drops the B@Dtv repository + wizard addons into
+4. Drops the R&Dtv repository + wizard addons into
    `~/.kodi/addons/`.
 5. Pulls Kodi-official addons (YouTube, Pluto TV, Crackle, PlexMod,
    Arctic Zephyr MOD skin) straight from `mirrors.kodi.tv` -- bypasses
    Kodi entirely so dependency resolution can't fail mid-run.
-6. Wires PVR IPTV Simple Client at the 11,842-channel B@Dtv playlist.
-7. Copies the B@Dtv color override into the skin.
+6. Wires PVR IPTV Simple Client at the 11,842-channel R&Dtv playlist.
+7. Copies the R&Dtv color override into the skin.
 8. Walks you through Real-Debrid + Trakt device-code OAuth (skippable).
 9. Stream-tests one channel via `mpv` so you know whether your network
    actually lets IPTV through *before* you start clicking around Kodi.
 10. Launches Kodi in `--standalone -fs` kiosk mode.
 
-After setup, the **in-Kodi wizard** (Programs → B@Dtv Wizard) drops to
+After setup, the **in-Kodi wizard** (Programs → R&Dtv Wizard) drops to
 maintenance mode -- refresh scraper catalog, check anonymizer status,
 add NAS sources, re-apply the theme, run a library scan. None of the
 fragile install steps live there.
 
-Status: `./badtv status`.  Re-run one step: `./badtv repair <step>`.
-Just launch Kodi: `./badtv launch`.
+Status: `./radtv status`.  Re-run one step: `./radtv repair <step>`.
+Just launch Kodi: `./radtv launch`.
 
 Long-form: [`docs/INSTALL.md`](docs/INSTALL.md).
 
@@ -124,7 +125,7 @@ Source list: [`docs/ADDON-LIST.md`](docs/ADDON-LIST.md) and
 ## Repo layout
 
 ```text
-badtv/
+radtv/
 ├── README.md
 ├── CHANGELOG.md
 ├── LICENSE                   # GPL-3.0
@@ -132,11 +133,11 @@ badtv/
 ├── install.sh                # Linux + macOS installer
 ├── install.ps1               # Windows installer (PowerShell)
 ├── config/
-│   ├── badtv.conf.example    # single source of truth
+│   ├── radtv.conf.example    # single source of truth
 │   └── load.sh               # config layering helper
 ├── build/
-│   ├── repository/           # repository.badtv addon
-│   └── wizard/               # script.badtv.wizard (real wizard)
+│   ├── repository/           # repository.radtv addon
+│   └── wizard/               # script.radtv.wizard (real wizard)
 ├── assets/
 │   ├── branding/             # SVG source for icon/fanart/splash/logo
 │   ├── colors/tokens.md      # Black Donnellys palette
@@ -153,15 +154,14 @@ badtv/
 
 ## Mascot
 
-Same chaos kangaroo from the TerraKodi days, but now wearing a battered
-flat cap and standing behind the bar at McKenna's: black sunglasses, pouch
-full of VHS, a portable CRT TV on one shoulder, a Blu-ray balanced on top,
-General Lee parked in the alley outside, and a half-finished pint of stout
-on the back counter.
+R&Dtv's new page logo is a neon RAD 80s BMX bike with a glowing jellyfish
+rider: chrome frame, vaporwave sunset, electric tentacles, and big yellow
+`RAD` lettering. The SVG source lives at
+[`assets/branding/logo.svg`](assets/branding/logo.svg).
 
 ## Notes
 
-- B@Dtv documents and ships only **lawful free/ad-supported** IPTV sources
+- R&Dtv documents and ships only **lawful free/ad-supported** IPTV sources
   and pointers to user-supplied playlists. Premium TV Everywhere streams
   need your own credentials.
 - Third-party Kodi repositories move. The third-party addon list
@@ -178,7 +178,7 @@ on the back counter.
 
 ## Self-maintaining scraper catalog
 
-Third-party Kodi scraper repos move and die constantly. B@Dtv ships an
+Third-party Kodi scraper repos move and die constantly. R&Dtv ships an
 auto-update system so users don't have to chase the churn:
 
 - [`addons/scraper-catalog.json`](addons/scraper-catalog.json) is the

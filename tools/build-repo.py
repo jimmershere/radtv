@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""B@Dtv build helpers.
+"""R&Dtv build helpers.
 
 Currently:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural lint of B@Dtv addon zips against Kodi installer requirements.
+"""Structural lint of R&Dtv addon zips against Kodi installer requirements.
 
 Catches the things Kodi refuses to install but only reports as a generic
 'Failed to install dependency' or 'Failed to install Add-on from zip file':
@@ -15,7 +15,7 @@ Catches the things Kodi refuses to install but only reports as a generic
 Returns 0 on clean, 1 on any FAIL. Run from repo root:
 
     python3 tools/lint-zips.py
-    python3 tools/lint-zips.py dist/script.badtv.wizard-2.0.0.zip   # specific
+    python3 tools/lint-zips.py dist/script.radtv.wizard-2.0.0.zip   # specific
 """
 from __future__ import annotations
 
@@ -136,8 +136,8 @@ def main(argv: list[str]) -> int:
     else:
         repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         targets = [
-            os.path.join(repo, "dist/script.badtv.wizard-2.0.0.zip"),
-            os.path.join(repo, "dist/repository.badtv-2.0.1.zip"),
+            os.path.join(repo, "dist/script.radtv.wizard-2.0.0.zip"),
+            os.path.join(repo, "dist/repository.radtv-2.0.1.zip"),
         ]
     total = 0
     for t in targets:

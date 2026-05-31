@@ -3,7 +3,7 @@
   Reference Kodi sources.xml snippet.
 
   install.sh writes the real one at $KODI_USERDATA/sources.xml using the
-  FLOOR2_HOST from config/badtv.conf -- this file just documents what the
+  FLOOR2_HOST from config/radtv.conf -- this file just documents what the
   result looks like. Copy by hand only if install.sh isn't an option.
 -->
 <sources>

@@ -1,6 +1,6 @@
-# `assets/branding/` — B@Dtv vector source
+# `assets/branding/` — R&Dtv vector source
 
-Single source of truth for every B@Dtv-shaped pixel.
+Single source of truth for every R&Dtv-shaped pixel.
 
 | File           | Used for                                                   |
 | -------------- | ---------------------------------------------------------- |

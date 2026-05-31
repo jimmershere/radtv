@@ -1,4 +1,4 @@
-# B@Dtv — Full IPTV & Streaming Sources
+# R&Dtv — Full IPTV & Streaming Sources
 
 **Personal home use. Not for redistribution or resale.**
 
@@ -51,7 +51,7 @@ work perfectly.
 ## Tier 2 — Live TV (IPTV)
 
 PVR IPTV Simple Client is built into Kodi. Add any M3U URL → instant live TV.
-The B@Dtv builder pre-merges everything below into a single playlist.
+The R&Dtv builder pre-merges everything below into a single playlist.
 
 ### Default sources (enabled in `iptv/sources.yaml`)
 
@@ -120,9 +120,9 @@ For reliable 24/7 news + sports + live TV without hunting free sources:
 - Add via: Kodi → PVR IPTV Simple Client → M3U URL or Xtream login.
 - Gets you: Fox News, CNN, MSNBC, ESPN, NFL RedZone, etc. reliably.
 
-B@Dtv stays out of recommending specific providers — verify the legality in
+R&Dtv stays out of recommending specific providers — verify the legality in
 your region, then point PVR IPTV Simple Client at the service's URL via
-`IPTV_M3U_URL_OVERRIDE` in `config/badtv.conf`.
+`IPTV_M3U_URL_OVERRIDE` in `config/radtv.conf`.
 
 ---
 
@@ -144,8 +144,8 @@ your region, then point PVR IPTV Simple Client at the service's URL via
 Makes live TV show what's on, like a real cable guide:
 
 ```
-# Bundled B@Dtv EPG (merged from MJH + epg.pw)
-https://raw.githubusercontent.com/jimmershere/badtv/main/iptv/dist/badtv.xml
+# Bundled R&Dtv EPG (merged from MJH + epg.pw)
+https://raw.githubusercontent.com/jimmershere/radtv/main/iptv/dist/radtv.xml
 
 # Wide US/UK/CA/AU fallback:
 https://epg.pw/xmltv.xml
@@ -181,7 +181,7 @@ Settings → System → Display:
   Whitelist: all resolutions
 
 Settings → Skin → Colours:
-  badtv  (after running the wizard's "Apply B@Dtv theme" action)
+  radtv  (after running the wizard's "Apply R&Dtv theme" action)
 ```
 
 `install.sh` writes a sensible `advancedsettings.xml` for buffering /

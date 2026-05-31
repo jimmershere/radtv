@@ -2,7 +2,7 @@
 
 Third-party Kodi scraper repos (Umbrella, Seren, FEN Light, The Crew,
 Scrubs V2, Exodus Redux, Venom, Asgard, Homelander, …) move, rebrand, and
-die more often than the upstream skin code that uses them. The B@Dtv
+die more often than the upstream skin code that uses them. The R&Dtv
 catalog system exists so users don't have to chase those changes.
 
 ## The pieces
@@ -38,7 +38,7 @@ catalog system exists so users don't have to chase those changes.
                                       │ served by raw.githubusercontent.com
                                       ▼
    ┌───────────────────────────────────────────────────────────────────┐
-   │ Kodi user opens "B@Dtv Wizard > Show third-party scrapers"        │
+   │ Kodi user opens "R&Dtv Wizard > Show third-party scrapers"        │
    │ resources/lib/catalog.py fetches the catalog (cache 24h)          │
    │ resources/lib/actions.py renders the dialog with live statuses    │
    └───────────────────────────────────────────────────────────────────┘
@@ -140,7 +140,7 @@ URL enters the catalog is by hand.
   *checking whether the URLs we already trust still work* is exactly the
   kind of low-stakes drudge work a bot should own.
 - **No telemetry, no opt-in.** The user's Kodi reaches out only to
-  `raw.githubusercontent.com` and the scraper repos themselves; B@Dtv
+  `raw.githubusercontent.com` and the scraper repos themselves; R&Dtv
   doesn't host or proxy anything.
 - **Always graceful offline.** The wizard ships a bundled copy of the
   catalog inside the addon zip (`resources/data/scraper-catalog.json`).
@@ -164,7 +164,7 @@ URL enters the catalog is by hand.
 ## Adding a scraper — concrete example
 
 Say you want to add a new scraper called "Donnelly" from
-`https://hellskitchen.github.io/badtv-extras/`:
+`https://hellskitchen.github.io/radtv-extras/`:
 
 ```json
 {
@@ -176,8 +176,8 @@ Say you want to add a new scraper called "Donnelly" from
   "tags": ["movies", "tv", "real-debrid"],
   "repos": [
     {
-      "url": "https://hellskitchen.github.io/badtv-extras/",
-      "addons_xml": "https://hellskitchen.github.io/badtv-extras/addons.xml",
+      "url": "https://hellskitchen.github.io/radtv-extras/",
+      "addons_xml": "https://hellskitchen.github.io/radtv-extras/addons.xml",
       "label": "hellskitchen",
       "status": "unknown",
       "version": "",

@@ -24,7 +24,7 @@ from typing import List, Optional
 
 
 HTTP_TIMEOUT = 6
-USER_AGENT = "B@Dtv-wizard-anonymizer-check/2.0"
+USER_AGENT = "R&Dtv-wizard-anonymizer-check/2.0"
 
 
 @dataclass
