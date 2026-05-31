@@ -46,7 +46,7 @@ from xml.etree import ElementTree as ET
 
 # --- constants ---------------------------------------------------------------
 
-VERSION = "3.0.0-fork"
+VERSION = "3.1.0-fork"
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 STATE_DIR = os.path.expanduser("~/.config/badtv")
 STATE_PATH = os.path.join(STATE_DIR, "state.json")
@@ -180,6 +180,21 @@ SABNZBD_PORT  = 8080
 # directly. Off by default in step_jellyfin; flipped on if the user asks.
 JELLYFIN_IMAGE = "jellyfin/jellyfin:latest"
 JELLYFIN_PORT  = 8096
+
+# Jellyfin for Kodi -- the native sync client. It pulls the *arr-managed
+# library (which Jellyfin owns) into Kodi's own video database, so Umbrella /
+# Jacktook become scrapers layered OVER an owned library rather than the only
+# way to find anything. This is move #4 of the 2026 plan.
+#
+# The repository wrapper's own addon.xml points at a `releases/client/kodi`
+# datadir that 404s as of 2026-05; the live tree is under
+# `files/client/kodi/py3`, so we target that datadir directly and discover the
+# current plugin version from its addons.xml at runtime (no pinned zip URL to
+# rot -- the #1 failure mode flagged throughout this codebase).
+JELLYFIN_KODI_REPO_ZIP   = "https://repo.jellyfin.org/files/client/kodi/repository.jellyfin.kodi.zip"
+JELLYFIN_KODI_DATADIR    = "https://repo.jellyfin.org/files/client/kodi/py3"
+JELLYFIN_KODI_ADDONS_XML = "https://repo.jellyfin.org/files/client/kodi/py3/addons.xml"
+JELLYFIN_KODI_PLUGIN_ID  = "plugin.video.jellyfin"
 
 USER_AGENT = f"B@Dtv-bootstrap/{VERSION}"
 HTTP_TIMEOUT = 20
@@ -3365,45 +3380,339 @@ def step_usenet(state: Dict[str, Any]) -> bool:
     return True
 
 
-def step_jellyfin(state: Dict[str, Any]) -> bool:
-    """Optional: bring up Jellyfin as a parallel web/mobile frontend over
-    the *arr-managed library.
+def _jellyfin_auth_value(token: str = "") -> str:
+    """Build the `MediaBrowser` Authorization header Jellyfin expects on every
+    request. The token is omitted for the pre-auth startup-wizard calls and
+    appended once AuthenticateByName hands one back."""
+    parts = [
+        'MediaBrowser Client="B@Dtv"',
+        'Device="badtv-bootstrap"',
+        f'DeviceId="badtv-bootstrap-{platform.node() or "host"}"',
+        f'Version="{VERSION}"',
+    ]
+    if token:
+        parts.append(f'Token="{token}"')
+    return ", ".join(parts)
 
-    Why optional: Kodi is the user's primary frontend and works fine. Jellyfin
-    is purely additive -- web UI for any browser, native apps on iOS/Android/
-    Roku/AppleTV/Samsung -- backed by the SAME /datapool/media tree.
 
-    Plex was the obvious alternative but Jellyfin overtook it among
-    self-hosters in 2024-2025 (per JellyWatch's r/selfhosted survey)
-    after Plex's $249.99 lifetime hike + ending free remote streaming.
+def _jellyfin_api(base_url: str, method: str, path: str,
+                  payload: Optional[Dict[str, Any]] = None,
+                  token: str = "", timeout: int = 30,
+                  quiet: bool = False) -> Any:
+    """Talk to Jellyfin's REST API. Returns parsed JSON, `True` for an empty
+    2xx body (many Jellyfin POSTs answer 204), or None on error. `quiet`
+    suppresses the warn line so the readiness poll doesn't spam."""
+    url = base_url + path
+    body = json.dumps(payload).encode() if payload is not None else None
+    req = urllib.request.Request(
+        url, data=body, method=method,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": _jellyfin_auth_value(token),
+            "User-Agent": USER_AGENT,
+        })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else True
+    except urllib.error.HTTPError as exc:
+        if not quiet:
+            warn(f"  Jellyfin API {method} {path}: HTTP {exc.code}")
+        return None
+    except Exception as exc:
+        if not quiet:
+            warn(f"  Jellyfin API {method} {path}: {exc}")
+        return None
 
-    The container definition is in the compose template under
-    `profiles: [jellyfin]` so it stays dormant until this step opts in.
+
+def _provision_jellyfin(base_url: str, admin_user: str, admin_pass: str,
+                        movies_path: str, tv_path: str
+                        ) -> Optional[Dict[str, str]]:
+    """Drive Jellyfin's first-run API end to end: complete the startup wizard
+    (admin user + locale), authenticate, create the Movies/Shows libraries
+    over the read-only /media mount, and mint an API key.
+
+    Returns {access_token, user_id, server_id, server_name, api_key} on
+    success, or None. Idempotent: if the wizard is already complete it just
+    re-authenticates with the supplied admin creds and reconciles libraries,
+    so `./badtv repair jellyfin` is safe to re-run."""
+
+    # 1. wait for the server to answer /System/Info/Public (first boot can
+    #    take a while -- Jellyfin unpacks ffmpeg + builds its DB).
+    pub: Any = None
+    for _ in range(45):
+        pub = _jellyfin_api(base_url, "GET", "/System/Info/Public", quiet=True)
+        if isinstance(pub, dict) and pub.get("Id"):
+            break
+        time.sleep(2)
+    if not isinstance(pub, dict) or not pub.get("Id"):
+        warn("Jellyfin did not come up in time")
+        return None
+    server_id   = pub["Id"]
+    server_name = pub.get("ServerName") or "B@Dtv (floor2)"
+
+    # 2. first-run wizard -- only reachable WITHOUT auth while
+    #    StartupWizardCompleted is false; skip it on a re-run.
+    if not pub.get("StartupWizardCompleted"):
+        info("  running Jellyfin startup wizard (admin user + locale)...")
+        _jellyfin_api(base_url, "POST", "/Startup/Configuration", payload={
+            "UICulture": "en-US", "MetadataCountryCode": "US",
+            "PreferredMetadataLanguage": "en"})
+        _jellyfin_api(base_url, "GET", "/Startup/User")  # primes default user
+        _jellyfin_api(base_url, "POST", "/Startup/User", payload={
+            "Name": admin_user, "Password": admin_pass})
+        _jellyfin_api(base_url, "POST", "/Startup/RemoteAccess", payload={
+            "EnableRemoteAccess": True, "EnableAutomaticPortMapping": False})
+        _jellyfin_api(base_url, "POST", "/Startup/Complete")
+        ok("  startup wizard complete")
+    else:
+        info("  Jellyfin already initialized -- re-authenticating")
+
+    # 3. authenticate as admin -> user access token + user id
+    auth = _jellyfin_api(base_url, "POST", "/Users/AuthenticateByName",
+                         payload={"Username": admin_user, "Pw": admin_pass})
+    if not isinstance(auth, dict) or not auth.get("AccessToken"):
+        warn("  Jellyfin auth failed (wrong admin password on a re-run?)")
+        return None
+    token   = auth["AccessToken"]
+    user_id = auth.get("User", {}).get("Id", "")
+    if not user_id:
+        warn("  Jellyfin auth returned no user id")
+        return None
+
+    # 4. libraries -- skip any that already exist so re-runs don't 400.
+    existing = _jellyfin_api(base_url, "GET", "/Library/VirtualFolders",
+                             token=token)
+    have = {v.get("Name") for v in existing} if isinstance(existing, list) else set()
+    for name, ctype, path in (("Movies", "movies", movies_path),
+                              ("Shows",  "tvshows", tv_path)):
+        if name in have:
+            ok(f"  library '{name}' already present")
+            continue
+        q = urllib.parse.urlencode({"name": name, "collectionType": ctype,
+                                    "refreshLibrary": "false"})
+        res = _jellyfin_api(base_url, "POST", f"/Library/VirtualFolders?{q}",
+                            payload={"LibraryOptions": {
+                                "PathInfos": [{"Path": path}],
+                                "EnableRealtimeMonitor": True}},
+                            token=token)
+        if res:
+            ok(f"  library '{name}' -> {path}")
+        else:
+            warn(f"  library '{name}': add may have failed (check {base_url})")
+
+    # 5. kick an initial scan so the library is populated by first Kodi sync.
+    _jellyfin_api(base_url, "POST", "/Library/Refresh", token=token)
+
+    # 6. mint a named API key (for state / external tooling -- the Kodi addon
+    #    itself authenticates with the user token above, not this key).
+    api_key = ""
+    appname = "B@Dtv-bootstrap"
+    _jellyfin_api(base_url, "POST",
+                  "/Auth/Keys?" + urllib.parse.urlencode({"app": appname}),
+                  token=token)
+    keys = _jellyfin_api(base_url, "GET", "/Auth/Keys", token=token)
+    items = keys.get("Items", []) if isinstance(keys, dict) else []
+    for k in items:
+        if k.get("AppName") == appname and k.get("AccessToken"):
+            api_key = k["AccessToken"]
+
+    return {"access_token": token, "user_id": user_id,
+            "server_id": server_id, "server_name": server_name,
+            "api_key": api_key}
+
+
+def _jellyfin_latest_plugin_version() -> Optional[str]:
+    """Discover the newest plugin.video.jellyfin version from the repo's
+    addons.xml. The file lists every historical version as a separate
+    <addon> node, so we pick the max rather than the last one parsed."""
+    try:
+        root = ET.fromstring(http_get(JELLYFIN_KODI_ADDONS_XML, timeout=60))
+    except Exception as exc:
+        warn(f"  could not read Jellyfin Kodi addons.xml: {exc}")
+        return None
+
+    def vkey(v: str) -> Tuple[int, ...]:
+        # "2.0.0+py3" -> (2, 0, 0); non-numeric parts collapse to 0.
+        base = v.split("+", 1)[0]
+        return tuple(int(p) if p.isdigit() else 0 for p in base.split("."))
+
+    vers = [a.get("version") for a in root.findall("addon")
+            if a.get("id") == JELLYFIN_KODI_PLUGIN_ID and a.get("version")]
+    return max(vers, key=vkey) if vers else None
+
+
+def _install_jellyfin_kodi_addon() -> List[str]:
+    """Install the Jellyfin-for-Kodi repository + plugin + its deps into Kodi.
+    Returns the addon ids to pre-enable in Addons33.db. Reuses the grey-addon
+    installer's dependency resolver so the script.module.* deps come from
+    mirrors.kodi.tv."""
+    info("installing Jellyfin for Kodi (native library sync client)...")
+    enabled: List[str] = []
+
+    # 1. repository wrapper -- lets Kodi self-update the addon later.
+    try:
+        if not os.path.isdir(os.path.join(KODI_ADDONS, "repository.jellyfin.kodi")):
+            data = http_get(JELLYFIN_KODI_REPO_ZIP, timeout=60)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(KODI_ADDONS)
+            ok("  repository.jellyfin.kodi installed")
+        else:
+            ok("  repository.jellyfin.kodi already installed")
+        enabled.append("repository.jellyfin.kodi")
+    except Exception as exc:
+        warn(f"  jellyfin repo install failed: {exc} (continuing with direct plugin install)")
+
+    # 2. plugin.video.jellyfin -- latest version discovered from addons.xml.
+    pid = JELLYFIN_KODI_PLUGIN_ID
+    if os.path.isdir(os.path.join(KODI_ADDONS, pid)):
+        ok(f"  {pid}: already installed")
+    else:
+        ver = _jellyfin_latest_plugin_version()
+        if not ver:
+            warn(f"  could not determine {pid} version -- skipping Kodi sync addon")
+            return enabled
+        # Literal '+' in the version is a valid path char and the repo serves
+        # it fine (verified against repo.jellyfin.org 2026-05).
+        url = f"{JELLYFIN_KODI_DATADIR}/{pid}/{pid}-{ver}.zip"
+        if not _install_addon_zip(pid, ver, url):
+            warn(f"  {pid}: install failed -- skipping Kodi sync addon")
+            return enabled
+
+    # 3. resolve deps (script.module.requests/dateutil/websocket/addon.signals)
+    #    from the Kodi mirror -- the plugin dir already exists, so
+    #    _resolve_and_install skips re-installing it and just walks `requires`.
+    try:
+        mirror_root = ET.fromstring(http_get(f"{KODI_MIRROR}/addons.xml.gz", timeout=60))
+        mirror_versions = {a.get("id"): a.get("version")
+                           for a in mirror_root.findall("addon")
+                           if a.get("id") and a.get("version")}
+    except Exception as exc:
+        warn(f"  mirror catalog fetch failed: {exc} -- deps may be missing")
+        mirror_versions = {}
+    visited: set = set()
+    failures = _resolve_and_install(pid, [], mirror_versions, visited)
+    if failures:
+        warn(f"  unresolved Jellyfin addon deps: {', '.join(sorted(set(failures)))}")
+        warn("  open Kodi once with network up and it'll pull them from the repo")
+    enabled.extend(visited)
+    enabled.append(pid)
+    return enabled
+
+
+def _seed_jellyfin_kodi(base_url: str, prov: Dict[str, str],
+                        admin_user: str) -> None:
+    """Pre-seed plugin.video.jellyfin so Kodi connects to floor2 on first
+    launch with no server-pairing dialog. The addon validates the stored
+    AccessToken against the server and, if it's good, lands in the SignedIn
+    state and starts syncing the *arr library into Kodi's video DB.
+
+    Writes data.json (the addon's credential store, schema confirmed against
+    plugin.video.jellyfin 2.0.0) plus settings.xml so the manual-entry fields
+    are pre-filled should the token ever need a refresh. If a future addon
+    version changes the data.json schema, the addon falls back to its normal
+    first-run dialog -- which is now pre-filled -- so this degrades gracefully.
     """
-    header("New · Jellyfin (optional web/mobile frontend)")
-    if not confirm("Bring up Jellyfin as a parallel frontend?", default=False):
+    addon_id = JELLYFIN_KODI_PLUGIN_ID
+    d = os.path.join(KODI_USERDATA, "addon_data", addon_id)
+    os.makedirs(d, exist_ok=True)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    server = {
+        "Id":               prov["server_id"],
+        "Name":             prov["server_name"],
+        "address":          base_url,
+        "ManualAddress":    base_url,
+        "DateLastAccessed": now,
+        "AccessToken":      prov["access_token"],
+        "UserId":           prov["user_id"],
+        "Users":            [{"Id": prov["user_id"], "IsSignedInOffline": True}],
+    }
+    with open(os.path.join(d, "data.json"), "w", encoding="utf-8") as fh:
+        json.dump({"Servers": [server]}, fh, indent=4)
+    _patch_addon_settings(addon_id, {
+        "server":     base_url,
+        "serverName": prov["server_name"],
+        "username":   admin_user,
+    })
+    ok("  pre-seeded Kodi <-> Jellyfin connection (no pairing dialog on first run)")
+
+
+def step_jellyfin(state: Dict[str, Any]) -> bool:
+    """Optional: bring up Jellyfin as a parallel web/mobile frontend AND wire
+    it natively into Kodi.
+
+    When you opt in this step:
+      1. starts the jellyfin container on floor2 (compose `jellyfin` profile)
+      2. drives the first-run API: admin user, Movies + Shows libraries over
+         the read-only /media mount, and an API key
+      3. installs the Jellyfin-for-Kodi sync addon (+ deps) into Kodi and
+         pre-seeds the server connection, so Kodi syncs the *arr-managed
+         library into its own video DB with no pairing dialog
+
+    This realizes move #4 of the 2026 plan (docs/grey-area-streaming-2026.pdf):
+    Jellyfin owns the archival library; Umbrella / Jacktook become scrapers
+    layered over it rather than the only way to find content. Jellyfin
+    overtook Plex among self-hosters in 2024-2025 after Plex's $249.99
+    lifetime hike + ending free remote streaming.
+
+    Non-blocking: skip it and Kodi keeps working exactly as before. Resume
+    later via `./badtv repair jellyfin` (idempotent)."""
+    header("New · Jellyfin (web/mobile frontend + native Kodi sync)")
+    if not confirm("Bring up Jellyfin and wire it into Kodi?", default=False):
         info("skipped Jellyfin (Kodi remains the only frontend)")
         mark_done(state, "jellyfin", jellyfin="skipped")
         return True
 
-    floor2_host = state.get("vars", {}).get("floor2_host", FLOOR2_DEFAULT_HOST)
+    v = state.get("vars", {})
+    floor2_host = v.get("floor2_host", FLOOR2_DEFAULT_HOST)
     floor2_user = os.environ.get("FLOOR2_USER", FLOOR2_DEFAULT_USER)
+    base_url = f"http://{floor2_host}:{JELLYFIN_PORT}"
 
-    info("starting jellyfin container on floor2 (with --profile jellyfin)...")
-    cmd = ("cd /datapool/preserved/badtv-arr && "
-           "docker compose --profile jellyfin up -d jellyfin")
-    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}", cmd]):
+    section("Jellyfin admin account")
+    admin_user = v.get("jellyfin_user") or ask("admin username", default="badtv")
+    admin_pass = v.get("jellyfin_pass") or ask("admin password", default="B@Dtv2026!")
+
+    # 1. start the container; ensure the library roots exist on floor2 first.
+    info("starting jellyfin container on floor2 (profile: jellyfin)...")
+    start_cmd = (
+        "cd /datapool/preserved/badtv-arr && "
+        "sudo mkdir -p /datapool/media/movies /datapool/media/tv && "
+        "docker compose --profile jellyfin up -d jellyfin")
+    if not run_ok(["ssh", f"{floor2_user}@{floor2_host}", start_cmd]):
         warn("failed to start jellyfin container")
         mark_done(state, "jellyfin", jellyfin="error")
         return True
+    ok("jellyfin container up")
 
-    url = f"http://{floor2_host}:8096"
-    ok(f"Jellyfin starting at {url}")
-    info("first-time setup is via the web UI: create an admin user, then")
-    info(f"add /media/tv (Shows) and /media/movies (Movies) as libraries.")
-    info("The container mounts /datapool/media:/media:ro so it sees everything")
-    info("Sonarr/Radarr drop in -- no separate scan path config needed.")
-    mark_done(state, "jellyfin", jellyfin="started", jellyfin_url=url)
+    # 2. provision via the Jellyfin API (admin, libraries, API key).
+    info("provisioning Jellyfin (admin user, libraries, API key)...")
+    prov = _provision_jellyfin(base_url, admin_user, admin_pass,
+                               "/media/movies", "/media/tv")
+    if not prov:
+        warn("Jellyfin provisioning incomplete -- finish setup at "
+             f"{base_url} by hand, then re-run `./badtv repair jellyfin`")
+        mark_done(state, "jellyfin", jellyfin="container-only",
+                  jellyfin_url=base_url, jellyfin_user=admin_user,
+                  jellyfin_pass=admin_pass)
+        return True
+    ok(f"Jellyfin provisioned: admin '{admin_user}', Movies + Shows libraries")
+
+    # 3. install + wire the Kodi sync addon.
+    section("Kodi <-> Jellyfin sync")
+    enabled = _install_jellyfin_kodi_addon()
+    _seed_jellyfin_kodi(base_url, prov, admin_user)
+    _kodi_db_enable(sorted(set(enabled)))
+
+    ok(f"Jellyfin ready at {base_url}")
+    info("Kodi syncs the owned library on next launch (Add-ons -> Jellyfin).")
+    info(f"Native apps (iOS/Android/Roku/AppleTV/Samsung) all point at {base_url}.")
+    mark_done(state, "jellyfin",
+              jellyfin="wired",
+              jellyfin_url=base_url,
+              jellyfin_user=admin_user,
+              jellyfin_pass=admin_pass,
+              jellyfin_api_key=prov.get("api_key", ""),
+              jellyfin_server_id=prov.get("server_id", ""))
     return True
 
 

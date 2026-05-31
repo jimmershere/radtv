@@ -59,3 +59,20 @@ bash tools/quality-check.sh           media-scan-report.tsv
 The scan tags everything as `watchable`, `consider_upgrade`, or
 `reencode_or_replace`. The check rolls those tags up so you can decide what's
 worth replacing before scanning the rest into the library.
+
+## Jellyfin frontend
+
+The reference floor2 stack now runs Jellyfin as the owned-library frontend over
+the same media tree:
+
+- Jellyfin URL: `http://192.168.1.206:8096`
+- Stack root: `/datapool/preserved/badtv-arr`
+- Compose override: `/datapool/preserved/badtv-arr/docker-compose.override.yml`
+- Credential handover file: `/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json`
+
+Jellyfin mounts `/datapool/media` as `/media:ro`, so it can index and stream
+the library without owning writes. Keep Sonarr/Radarr/download clients as the
+writers and Jellyfin as a read-only presentation layer.
+
+See [`../docs/JELLYFIN.md`](../docs/JELLYFIN.md) for operational checks,
+credential handover rules, and Kodi sync notes.

@@ -137,7 +137,7 @@ def main(argv: list[str]) -> int:
         repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         targets = [
             os.path.join(repo, "dist/script.badtv.wizard-2.0.0.zip"),
-            os.path.join(repo, "dist/repository.badtv-2.0.0.zip"),
+            os.path.join(repo, "dist/repository.badtv-2.0.1.zip"),
         ]
     total = 0
     for t in targets:

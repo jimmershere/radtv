@@ -80,7 +80,7 @@ downloads, and OAuth. Prefer the host-side wizard.
 Then open Kodi:
 
 1. **Settings → Add-ons → Install from zip file** → pick
-   `dist/repository.badtv-2.0.0.zip`.
+   `dist/repository.badtv-2.0.1.zip`.
 2. **Install from repository → B@Dtv Repository → Program add-ons →
    B@Dtv Wizard → Install.**
 3. **Programs → B@Dtv Wizard.** Work through the menu:
@@ -113,7 +113,7 @@ If `install.sh` is off the table (read-only filesystem, locked-down device,
 managed kiosk):
 
 1. **Get the repo zip onto the device.** Either build it (`make repo`) or
-   download `dist/repository.badtv-2.0.0.zip` from the Releases page.
+   download `dist/repository.badtv-2.0.1.zip` from the Releases page.
 2. **Kodi → Settings → Add-ons → Install from zip file → repository.badtv-….zip.**
 3. **Install from repository → B@Dtv Repository → Program add-ons →
    B@Dtv Wizard.**
@@ -144,6 +144,26 @@ Movies / TV / Music as the right library type.
 
 See [`../media-server/README.md`](../media-server/README.md) for the full
 walkthrough.
+
+---
+
+## Jellyfin on floor2
+
+The reference floor2 deployment includes a Jellyfin frontend over the same
+`/datapool/media` tree used by Sonarr/Radarr. It is exposed on the LAN at
+`http://192.168.1.206:8096` and documented in
+[`JELLYFIN.md`](JELLYFIN.md).
+
+Credential handover is intentionally out-of-repo. The protected floor2 handover
+file is:
+
+```
+/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json
+```
+
+That file must remain `0600` and should be retrieved only through a trusted SSH
+session or a password manager workflow. Do not paste its contents into shell
+history, chat, Git commits, screenshots, or issue trackers.
 
 ---
 

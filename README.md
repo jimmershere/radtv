@@ -5,9 +5,10 @@
 ![Theme](https://img.shields.io/badge/Theme-Black%20Donnellys-0E3B2E)
 ![floor2](https://img.shields.io/badge/optional-floor2%20NAS-A89E84)
 
-> **You are on the `fork/v2-torbox-usenet` branch (v3.0.0-fork).** This fork
+> **You are on the `fork/v2-torbox-usenet` branch (v3.1.0-fork).** This fork
 > adds TorBox + Usenet as parallel backends, swaps FlareSolverr → Byparr,
-> prunes zombie addons (The Crew, Crackle), and scaffolds optional Jellyfin.
+> prunes zombie addons (The Crew, Crackle), and brings up an optional
+> **Jellyfin** frontend that auto-provisions and syncs natively into Kodi.
 > Driven by the May 2026 Real-Debrid filter event. See `CHANGELOG.md` for
 > the full diff and `docs/grey-area-streaming-2026.pdf` for the why.
 
@@ -48,6 +49,8 @@ free / lawful US linear sources, the strongest community scrapers, and
   stages the repo zip, and applies the skin override.
 - **`media-server/`** — `setup-nfs.sh` / `setup-smb.sh` for the floor2 NAS
   (or any NAS you point them at).
+- **`docs/JELLYFIN.md`** — floor2 Jellyfin deployment, credential handover,
+  validation, and operations notes for the 2026 owned-library frontend.
 - **`tools/`** — `render-assets.sh` (rasterize SVGs), `build-repo.py` (zip
   packaging), `scan-existing-media.sh` (quality audit).
 
@@ -109,6 +112,7 @@ touch layouts. Apply via wizard or copy by hand — see
 | Unrestriction              | Real-Debrid (~$4/mo) **+ TorBox (~$3/mo)** in parallel — TorBox is the May 2026 RD-filter refuge |
 | Usenet path *(v3)*         | SABnzbd + NZBGeek (or any Newznab) wired into Sonarr/Radarr — the stable backend   |
 | Cloudflare bypass *(v3)*   | Byparr (Camoufox-based, FlareSolverr-API compatible)                               |
+| Owned-library frontend *(v3.1)* | Jellyfin (auto-provisioned) + native Kodi sync — owns the *arr library; scrapers sit on top |
 | Watch state                | Trakt across every supported addon                                                 |
 | Subtitles                  | A4K Subtitles                                                                      |
 | International / news / sports | iptv-org per-country + per-category lists, toggleable in `iptv/sources.yaml`    |
@@ -168,6 +172,9 @@ on the back counter.
   for both.
 - Built for **TheClawFirm**, powered by **floor2**, themed by **Hell's Kitchen
   at 2 AM**.
+- The reference floor2 Jellyfin deployment is documented in
+  [`docs/JELLYFIN.md`](docs/JELLYFIN.md). Do not commit Jellyfin credentials;
+  the handover file lives only on floor2 with `0600` permissions.
 
 ## Self-maintaining scraper catalog
 
@@ -193,6 +200,7 @@ Full design + maintenance flow: [`docs/SCRAPERS.md`](docs/SCRAPERS.md).
 - [`NOTICE.md`](NOTICE.md) — third-party trademarks
 - [`docs/PRIVACY.md`](docs/PRIVACY.md) — VPN / DNS / anonymizer guide
 - [`docs/INSTALL.md`](docs/INSTALL.md)
+- [`docs/JELLYFIN.md`](docs/JELLYFIN.md)
 - [`docs/SETUP-GUIDE.md`](docs/SETUP-GUIDE.md)
 - [`docs/ADDON-LIST.md`](docs/ADDON-LIST.md)
 - [`docs/SCRAPERS.md`](docs/SCRAPERS.md)

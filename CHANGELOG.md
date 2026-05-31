@@ -1,5 +1,59 @@
 # Changelog
 
+## 3.1.0-fork — Jellyfin frontend + native Kodi sync (2026-05-28)
+
+> **Branch:** `fork/v2-torbox-usenet`. Finishes move #4 of the 2026 plan
+> (`docs/grey-area-streaming-2026.pdf`): Jellyfin as the owned-library
+> frontend, with Kodi reading that library natively.
+
+### Why
+
+3.0.0 *scaffolded* Jellyfin — the container shipped behind a compose profile
+but `step_jellyfin` just booted it and told you to run the web wizard by
+hand. That left moves 1–3 (TorBox / Usenet / Byparr) done and move 4 — "treat
+Umbrella + Jacktook as a frontend over the *arr-managed library, not as
+primary scrapers" — only half-built. This release makes Jellyfin turnkey and
+wires it into Kodi, so the owned archival library is the source of truth and
+the scrapers sit on top of it.
+
+### What landed
+
+- **Jellyfin auto-provisioning** (`_provision_jellyfin`). `step_jellyfin` now
+  drives Jellyfin's first-run REST API instead of punting to the web UI:
+  completes the startup wizard (admin user + locale), creates **Movies**
+  (`/media/movies`) and **Shows** (`/media/tv`) libraries over the read-only
+  `/datapool/media` mount, kicks an initial scan, and mints a named API key.
+  Idempotent — a re-run re-authenticates with the stored admin creds and only
+  adds libraries that are missing, so `./badtv repair jellyfin` is safe.
+
+- **Native Kodi ↔ Jellyfin sync** (`_install_jellyfin_kodi_addon` +
+  `_seed_jellyfin_kodi`). Installs the Jellyfin-for-Kodi addon
+  (`plugin.video.jellyfin`, latest discovered from the repo's `addons.xml`
+  rather than a pinned URL) plus its `script.module.*` deps from
+  mirrors.kodi.tv, then pre-seeds the addon's `data.json` with the server
+  address + a validated user token. Kodi connects on next launch with **no
+  pairing dialog** and syncs the owned library into its own video DB. If a
+  future addon version changes the credential schema, it falls back to its
+  (now pre-filled) first-run dialog — graceful degradation.
+
+- **Library roots ensured on floor2.** The step `mkdir -p`s
+  `/datapool/media/{movies,tv}` before adding Jellyfin libraries so a fresh
+  NAS doesn't error on an empty path.
+
+- **Credential handover documented.** `docs/JELLYFIN.md` records the floor2
+  service URL, compose override, library paths, health checks, and the protected
+  credential file location. Secrets stay off-repo and should move only through
+  a trusted SSH session or password manager.
+
+### Still manual / by design
+
+- The container stays behind compose `profiles: [jellyfin]` and the step still
+  defaults to **No** — Kodi remains the primary frontend; Jellyfin is additive.
+- Jellyseerr (requests) and Bazarr (subtitles) are **not** included — out of
+  scope for this release (see plan §7 for the broader companion list).
+
+---
+
 ## 3.0.0-fork — TorBox + Usenet + Byparr; prune the zombies (2026-05-26)
 
 > **Branch:** `fork/v2-torbox-usenet`. Scaffolded as a separate fork while
