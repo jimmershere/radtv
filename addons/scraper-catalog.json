@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated": "2026-06-19T08:14:55Z",
+  "updated": "2026-06-20T07:37:36Z",
   "generator": "manual + tools/refresh-scrapers.py",
   "comment": "Canonical R&Dtv catalog of third-party Kodi addon repos. The bootstrap installs everything tagged `auto: true` directly. The wizard fetches the latest at runtime and falls back to this bundled copy when offline. Schema v2 adds `repo_zip_url` (the single-file repo zip Kodi-style repos serve at their root) and `addons_xml` (the URL listed INSIDE the repo's addon.xml, after picking the right <dir> block for the Kodi major). Live URLs verified 2026-05-24.",
   "scrapers": [
@@ -23,8 +23,8 @@
           "addons_xml": "https://raw.githubusercontent.com/not-coco-joe/repository.cocoscrapers/master/zips/addons.xml",
           "status": "ok",
           "version": "1.0.39",
-          "last_seen_ok": "2026-06-19T08:14:53Z",
-          "last_checked": "2026-06-19T08:14:53Z"
+          "last_seen_ok": "2026-06-20T07:37:35Z",
+          "last_checked": "2026-06-20T07:37:35Z"
         }
       ]
     },
@@ -51,7 +51,7 @@
           "status": "down",
           "version": "",
           "last_seen_ok": "2026-05-24T20:30:00Z",
-          "last_checked": "2026-06-19T08:14:54Z"
+          "last_checked": "2026-06-20T07:37:35Z"
         }
       ]
     },
@@ -74,9 +74,9 @@
           "repo_zip_url": "https://kodifitzwell.github.io/repo/repository.kodifitzwell-0.0.1.zip",
           "addons_xml": "https://kodiyashimaru.github.io/repo/packages/addons.xml",
           "status": "ok",
-          "version": "6.06.08",
-          "last_seen_ok": "2026-06-19T08:14:54Z",
-          "last_checked": "2026-06-19T08:14:54Z"
+          "version": "6.06.09",
+          "last_seen_ok": "2026-06-20T07:37:36Z",
+          "last_checked": "2026-06-20T07:37:36Z"
         }
       ]
     },
@@ -99,9 +99,9 @@
           "addons_xml": "https://raw.githubusercontent.com/Gujal00/smrzips/master/addons.xml",
           "datadir": "https://raw.githubusercontent.com/Gujal00/smrzips/master/zips/",
           "status": "ok",
-          "version": "5.1.203",
-          "last_seen_ok": "2026-06-19T08:14:54Z",
-          "last_checked": "2026-06-19T08:14:54Z"
+          "version": "5.1.204",
+          "last_seen_ok": "2026-06-20T07:37:36Z",
+          "last_checked": "2026-06-20T07:37:36Z"
         }
       ]
     },
@@ -126,8 +126,8 @@
           "addons_xml": "https://raw.githubusercontent.com/nixgates/nixgates/master/repo/zips/addons.xml",
           "status": "ok",
           "version": "2.1.9",
-          "last_seen_ok": "2026-06-19T08:14:54Z",
-          "last_checked": "2026-06-19T08:14:54Z"
+          "last_seen_ok": "2026-06-20T07:37:36Z",
+          "last_checked": "2026-06-20T07:37:36Z"
         }
       ]
     },
@@ -151,9 +151,9 @@
           "repo_zip_url": "https://team-crew.github.io/repository.thecrew-0.3.8.zip",
           "addons_xml": "https://raw.githubusercontent.com/thecrewwh/zips/master/matrix/_zip/addons.xml",
           "status": "ok",
-          "version": "3.0.4",
-          "last_seen_ok": "2026-06-19T08:14:55Z",
-          "last_checked": "2026-06-19T08:14:55Z"
+          "version": "3.0.9",
+          "last_seen_ok": "2026-06-20T07:37:36Z",
+          "last_checked": "2026-06-20T07:37:36Z"
         }
       ]
     },
@@ -179,8 +179,8 @@
           "addons_xml_omega": "https://raw.githubusercontent.com/umbrellaplug/umbrellaplug.github.io/master/omega/zips/addons.xml",
           "status": "ok",
           "version": "6.7.77",
-          "last_seen_ok": "2026-06-19T08:14:55Z",
-          "last_checked": "2026-06-19T08:14:55Z"
+          "last_seen_ok": "2026-06-20T07:37:36Z",
+          "last_checked": "2026-06-20T07:37:36Z"
         }
       ]
     }
