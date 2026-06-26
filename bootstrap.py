@@ -1872,8 +1872,9 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - VPN_PORT_FORWARDING=${{VPN_PORT_FORWARDING:-on}}
       - VPN_PORT_FORWARDING_PROVIDER=${{VPN_PORT_FORWARDING_PROVIDER:-protonvpn}}
       - PORT_FORWARD_ONLY=${{PORT_FORWARD_ONLY:-on}}
+      - FIREWALL_INPUT_PORTS=${{FIREWALL_INPUT_PORTS:-8091}}
       - TZ=America/New_York
-      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.16.0.0/12
     ports:
       - "8091:8091"   # qBittorrent web UI is exposed THROUGH gluetun
     volumes: [./gluetun:/gluetun]
@@ -1947,6 +1948,8 @@ SERVER_CITIES=
 VPN_PORT_FORWARDING=on
 VPN_PORT_FORWARDING_PROVIDER=protonvpn
 PORT_FORWARD_ONLY=on
+FIREWALL_INPUT_PORTS=8091
+FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.16.0.0/12
 
 # --- Alternatives (do not mix with Proton WireGuard above) -------------------
 # Mullvad WireGuard:
@@ -3921,7 +3924,19 @@ def cmd_repair(args: argparse.Namespace) -> int:
             return 1
         return subprocess.call([sys.executable, script])
     if step_id == "qbittorrent":
-        script = os.path.join(REPO_ROOT, "tools", "floor2-set-qbittorrent.py")
+        set_script = os.path.join(REPO_ROOT, "tools", "floor2-set-qbittorrent.py")
+        wire_script = os.path.join(REPO_ROOT, "tools", "floor2-wire-qbit-clients.py")
+        if not os.path.isfile(set_script):
+            err(f"repair script missing: {set_script}")
+            return 1
+        rc = subprocess.call([sys.executable, set_script])
+        if rc != 0:
+            return rc
+        if os.path.isfile(wire_script):
+            return subprocess.call([sys.executable, wire_script])
+        return 0
+    if step_id in ("wire-qbit", "qbit-wire", "prowlarr-qbit"):
+        script = os.path.join(REPO_ROOT, "tools", "floor2-wire-qbit-clients.py")
         if not os.path.isfile(script):
             err(f"repair script missing: {script}")
             return 1
@@ -3953,7 +3968,7 @@ def cmd_repair(args: argparse.Namespace) -> int:
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        extra = ["floor2-ssh", "import-wg", "fix-compose", "sonarr", "qbittorrent", "gluetun", "fix-proton"]
+        extra = ["floor2-ssh", "import-wg", "fix-compose", "wire-qbit", "sonarr", "qbittorrent", "gluetun", "fix-proton"]
         err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):

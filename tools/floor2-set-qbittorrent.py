@@ -84,6 +84,9 @@ def patch_qbit_conf(conf_text: str, username: str, password: str) -> str:
     out: list[str] = []
     saw_prefs = False
     skip_keys = {"WebUI\\Username", "WebUI\\Password_PBKDF2"}
+    extra_prefs = {
+        "WebUI\\HostHeaderValidation": "false",
+    }
     for line in lines:
         key = line.split("=", 1)[0] if "=" in line else ""
         if key in skip_keys:
@@ -97,6 +100,8 @@ def patch_qbit_conf(conf_text: str, username: str, password: str) -> str:
         out.append("[Preferences]")
     out.append(f"WebUI\\Username={username}")
     out.append(f'WebUI\\Password_PBKDF2="{pbkdf2}"')
+    for k, v in extra_prefs.items():
+        out.append(f"{k}={v}")
     if not conf_text.endswith("\n"):
         out.append("")
     return "\n".join(out)

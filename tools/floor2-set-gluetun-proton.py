@@ -228,7 +228,15 @@ def patch_compose_proton(compose: str) -> str:
             "      - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING:-on}\n"
             "      - VPN_PORT_FORWARDING_PROVIDER=${VPN_PORT_FORWARDING_PROVIDER:-protonvpn}\n"
             "      - PORT_FORWARD_ONLY=${PORT_FORWARD_ONLY:-on}\n"
-            "      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24",
+            "      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n"
+            "      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,172.16.0.0/12",
+            1,
+        )
+    elif "FIREWALL_INPUT_PORTS" not in compose:
+        compose = compose.replace(
+            "      - FIREWALL_OUTBOUND_SUBNETS=",
+            "      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n"
+            "      - FIREWALL_OUTBOUND_SUBNETS=",
             1,
         )
     return fix_compose_interpolation(compose)
