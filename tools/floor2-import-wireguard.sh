@@ -64,8 +64,14 @@ export FLOOR2_STACK="${FLOOR2_STACK:-/datapool/preserved/badtv-arr}"
 GLUETUN_PY="$REPO_ROOT/tools/floor2-set-gluetun-proton.py"
 [[ -f "$GLUETUN_PY" ]] || die "missing $GLUETUN_PY — git pull in $REPO_ROOT"
 
-log "configuring Gluetun (ProtonVPN + WireGuard) in $FLOOR2_STACK"
+log "configuring Gluetun (custom WireGuard from Proton .conf) in $FLOOR2_STACK"
 python3 "$GLUETUN_PY"
+
+WIRE_PY="$REPO_ROOT/tools/floor2-wire-qbit-clients.py"
+if [[ -f "$WIRE_PY" ]]; then
+  log "wiring qBittorrent for Prowlarr (after Gluetun healthy)"
+  FLOOR2_STACK="$FLOOR2_STACK" python3 "$WIRE_PY" || true
+fi
 
 FIX_PY="$REPO_ROOT/tools/floor2-fix-compose.py"
 if [[ -f "$FIX_PY" ]]; then

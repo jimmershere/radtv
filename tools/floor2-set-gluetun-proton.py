@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from typing import Dict, Optional, Tuple
 
 FLOOR2_HOST = os.environ.get("FLOOR2_HOST", "192.168.1.206")
@@ -41,7 +42,19 @@ PROTON_ENV = {
     "VPN_PORT_FORWARDING": os.environ.get("VPN_PORT_FORWARDING", "on"),
     "VPN_PORT_FORWARDING_PROVIDER": "protonvpn",
     "PORT_FORWARD_ONLY": os.environ.get("PORT_FORWARD_ONLY", "on"),
-    # Clear OpenVPN leftovers when switching to WireGuard Proton
+    "OPENVPN_USER": "",
+    "OPENVPN_PASSWORD": "",
+}
+
+# Use when a Proton-downloaded .conf is installed — key is tied to one endpoint.
+CUSTOM_WG_ENV = {
+    "VPN_SERVICE_PROVIDER": "custom",
+    "VPN_TYPE": "wireguard",
+    "VPN_PORT_FORWARDING": "off",
+    "VPN_PORT_FORWARDING_PROVIDER": "",
+    "PORT_FORWARD_ONLY": "off",
+    "SERVER_COUNTRIES": "",
+    "SERVER_CITIES": "",
     "OPENVPN_USER": "",
     "OPENVPN_PASSWORD": "",
 }
@@ -162,15 +175,50 @@ def detect_stack() -> str:
 
 
 def parse_wg_conf(path: str) -> Tuple[str, str]:
-    key, addr = "", ""
+    data = parse_wg_conf_full(path)
+    return data.get("private_key", ""), data.get("addresses", "")
+
+
+def parse_wg_conf_full(path: str) -> Dict[str, str]:
+    """Parse a Proton/Gluetun WireGuard ini file."""
+    out: Dict[str, str] = {}
+    section = ""
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line.lower().startswith("privatekey"):
-                key = line.split("=", 1)[1].strip()
-            elif line.lower().startswith("address"):
-                addr = line.split("=", 1)[1].strip()
-    return key, addr
+        for raw in fh:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                section = line[1:-1].lower()
+                continue
+            if "=" not in line:
+                continue
+            key, val = (p.strip() for p in line.split("=", 1))
+            lk = key.lower()
+            if section == "interface" and lk == "privatekey":
+                out["private_key"] = val
+            elif section == "interface" and lk == "address":
+                out["addresses"] = val
+            elif section == "peer" and lk == "publickey":
+                out["public_key"] = val
+            elif section == "peer" and lk == "presharedkey":
+                out["preshared_key"] = val
+            elif section == "peer" and lk == "endpoint":
+                host, _, port = val.partition(":")
+                out["endpoint_host"] = host
+                out["endpoint_port"] = port or "51820"
+    return out
+
+
+def install_wg_conf_file(stack: str, conf_path: str) -> str:
+    """Copy Proton .conf into the Gluetun volume as wg0.conf."""
+    dest_dir = f"{stack}/gluetun/wireguard"
+    dest = f"{dest_dir}/wg0.conf"
+    os.makedirs(dest_dir, mode=0o700, exist_ok=True)
+    with open(conf_path, encoding="utf-8") as src, open(dest, "w", encoding="utf-8") as dst:
+        dst.write(src.read())
+    os.chmod(dest, 0o600)
+    return dest
 
 
 def read_env_file(path: str) -> Dict[str, str]:
@@ -233,12 +281,19 @@ def patch_compose_proton(compose: str) -> str:
             1,
         )
     elif "FIREWALL_INPUT_PORTS" not in compose:
-        compose = compose.replace(
-            "      - FIREWALL_OUTBOUND_SUBNETS=",
-            "      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n"
-            "      - FIREWALL_OUTBOUND_SUBNETS=",
-            1,
+        compose = re.sub(
+            r"(^  gluetun:\n(?:  [^\n]*\n)*?    environment:\n)",
+            r"\1      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n",
+            compose,
+            count=1,
+            flags=re.M,
         )
+    compose = re.sub(
+        r"(VPN_SERVICE_PROVIDER=\$\{VPN_SERVICE_PROVIDER:-)protonvpn(\})",
+        r"\1custom\2",
+        compose,
+        count=1,
+    )
     return fix_compose_interpolation(compose)
 
 
@@ -259,36 +314,65 @@ def find_tmp_wg_conf() -> str:
     return ""
 
 
-def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str, str]:
-    key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip()
-    addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip()
-    country = normalize_proton_country(os.environ.get("SERVER_COUNTRIES", ""))
+def resolve_wireguard_settings(existing_env: Dict[str, str]) -> Tuple[Dict[str, str], str]:
+    """Return (.env updates, path to installed wg0.conf or '')."""
     conf = os.environ.get("PROTON_WG_CONF", "").strip()
     if not conf and on_floor2():
         conf = find_tmp_wg_conf()
-    if conf:
-        if not os.path.isfile(conf):
-            log(f"ERROR: PROTON_WG_CONF not found: {conf}")
-            sys.exit(1)
-        ckey, caddr = parse_wg_conf(conf)
-        key = key or ckey
-        addr = addr or caddr
-        inferred = infer_country_from_wg_conf(conf)
-        if inferred:
-            country = inferred
-    if not key:
-        key = existing_env.get("WIREGUARD_PRIVATE_KEY", "").strip()
-    if not addr:
-        addr = existing_env.get("WIREGUARD_ADDRESSES", "").strip()
-    if not country or country == "United States":
-        existing_country = normalize_proton_country(
-            existing_env.get("SERVER_COUNTRIES", "")
+    if not conf or not os.path.isfile(conf):
+        wg_key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip() or existing_env.get(
+            "WIREGUARD_PRIVATE_KEY", ""
+        ).strip()
+        wg_addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip() or existing_env.get(
+            "WIREGUARD_ADDRESSES", ""
+        ).strip()
+        country = normalize_proton_country(
+            os.environ.get("SERVER_COUNTRIES", "") or existing_env.get("SERVER_COUNTRIES", "")
         )
-        if existing_country and existing_country != "United States":
-            country = existing_country
-    if not country:
-        country = "United States"
-    return key, addr, country
+        updates = dict(PROTON_ENV)
+        updates["SERVER_COUNTRIES"] = country or "United States"
+        if wg_key:
+            updates["WIREGUARD_PRIVATE_KEY"] = wg_key
+        if wg_addr:
+            updates["WIREGUARD_ADDRESSES"] = wg_addr
+        return updates, ""
+
+    stack = detect_stack()
+    dest = install_wg_conf_file(stack, conf)
+    log(f"installed WireGuard config: {dest}")
+    log("mode: VPN_SERVICE_PROVIDER=custom (uses wg0.conf — matches Proton endpoint)")
+    log("note: port-forwarding is off in custom mode (torrents still work)")
+    updates = dict(CUSTOM_WG_ENV)
+    updates["FIREWALL_INPUT_PORTS"] = os.environ.get("FIREWALL_INPUT_PORTS", "8091")
+    updates["FIREWALL_OUTBOUND_SUBNETS"] = "192.168.1.0/24,172.16.0.0/12"
+    # drop stale proton-only keys from .env
+    for stale in (
+        "WIREGUARD_PRIVATE_KEY",
+        "WIREGUARD_ADDRESSES",
+        "WIREGUARD_PUBLIC_KEY",
+        "WIREGUARD_ENDPOINT_IP",
+        "WIREGUARD_ENDPOINT_PORT",
+    ):
+        updates[stale] = ""
+    return updates, dest
+
+
+def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str, str]:
+    updates, conf_dest = resolve_wireguard_settings(existing_env)
+    if conf_dest:
+        data = parse_wg_conf_full(
+            os.environ.get("PROTON_WG_CONF", "").strip() or find_tmp_wg_conf() or conf_dest
+        )
+        return (
+            data.get("private_key", ""),
+            data.get("addresses", ""),
+            infer_country_from_wg_conf(conf_dest) or "Switzerland",
+        )
+    return (
+        updates.get("WIREGUARD_PRIVATE_KEY", ""),
+        updates.get("WIREGUARD_ADDRESSES", ""),
+        updates.get("SERVER_COUNTRIES", "United States"),
+    )
 
 
 def run_compose_fix(stack: str) -> int:
@@ -310,17 +394,15 @@ def main() -> int:
 
     if on_floor2():
         existing = read_env_file(env_path)
-        wg_key, wg_addr, country = resolve_wireguard_key(existing)
-        updates = dict(PROTON_ENV)
-        updates["SERVER_COUNTRIES"] = country
-        if wg_key:
-            updates["WIREGUARD_PRIVATE_KEY"] = wg_key
-        if wg_addr:
-            updates["WIREGUARD_ADDRESSES"] = wg_addr
-        log(f"SERVER_COUNTRIES={country}")
-        text = ""
-        if os.path.isfile(env_path):
-            text = open(env_path, encoding="utf-8").read()
+        updates, wg_installed = resolve_wireguard_settings(existing)
+        if wg_installed:
+            log(f"WireGuard file: {wg_installed}")
+        elif not updates.get("WIREGUARD_PRIVATE_KEY"):
+            log("ERROR: no WireGuard config — set PROTON_WG_CONF=/tmp/your.conf")
+            return 1
+        else:
+            log(f"SERVER_COUNTRIES={updates.get('SERVER_COUNTRIES')}")
+        text = open(env_path, encoding="utf-8").read() if os.path.isfile(env_path) else ""
         open(env_path, "w", encoding="utf-8").write(upsert_env_text(text, updates))
         if os.path.isfile(compose_path):
             body = open(compose_path, encoding="utf-8").read()
@@ -329,6 +411,18 @@ def main() -> int:
             ["bash", "-c", f"cd {stack} && docker compose up -d gluetun qbittorrent"],
             check=False,
         )
+        for i in range(30):
+            cp = subprocess.run(
+                ["bash", "-c", f"cd {stack} && docker compose ps gluetun"],
+                capture_output=True,
+                text=True,
+            )
+            if "Up" in cp.stdout and "Restarting" not in cp.stdout:
+                log("Gluetun is up")
+                break
+            time.sleep(2)
+        else:
+            log("WARN: Gluetun not healthy yet — check: docker compose logs --tail=40 gluetun")
         subprocess.run(
             ["bash", "-c", f"cd {stack} && docker compose logs --tail=30 gluetun"],
             check=False,

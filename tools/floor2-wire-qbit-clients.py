@@ -64,34 +64,22 @@ def gluetun_hostname(compose: str) -> str:
 def patch_gluetun_firewall(compose: str) -> str:
     compose = re.sub(r"\$\{\{([^}]+)\}\}", r"${\1}", compose)
     if "FIREWALL_INPUT_PORTS" not in compose:
-        if "FIREWALL_OUTBOUND_SUBNETS" in compose:
-            compose = compose.replace(
-                "      - FIREWALL_OUTBOUND_SUBNETS=",
-                "      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n"
-                "      - FIREWALL_OUTBOUND_SUBNETS=",
-                1,
-            )
-        else:
-            compose = compose.replace(
-                "    environment:",
-                "    environment:\n"
-                "      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}",
-                1,
-            )
-    # Allow Docker bridge traffic (Prowlarr -> Gluetun) + LAN
+        compose = re.sub(
+            r"(^  gluetun:\n(?:  [^\n]*\n)*?    environment:\n)",
+            r"\1      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8091}\n",
+            compose,
+            count=1,
+            flags=re.M,
+        )
     compose = re.sub(
-        r"(FIREWALL_OUTBOUND_SUBNETS=\$\{FIREWALL_OUTBOUND_SUBNETS:-)([^}]+)(\})",
+        r"(^  gluetun:\n(?:  [^\n]*\n)*?      - FIREWALL_OUTBOUND_SUBNETS=)([^\n]+)$",
         lambda m: (
-            f"{m.group(1)}{m.group(2)},172.16.0.0/12{m.group(3)}"
-            if "172.16.0.0/12" not in m.group(2)
-            else m.group(0)
+            m.group(1) + m.group(2)
+            if "172.16.0.0/12" in m.group(2)
+            else m.group(1) + m.group(2).rstrip() + ",172.16.0.0/12"
         ),
         compose,
-    )
-    compose = re.sub(
-        r"(FIREWALL_OUTBOUND_SUBNETS=)(192\.168\.1\.0/24)\s*$",
-        r"\1\2,172.16.0.0/12",
-        compose,
+        count=1,
         flags=re.M,
     )
     return compose
@@ -230,7 +218,7 @@ def test_from_prowlarr(stack: str, host: str) -> None:
     prowlarr_c = m.group(1) if m else "badtv-prowlarr"
     cmd = (
         f"docker exec {prowlarr_c} wget -q -O- --timeout=5 "
-        f"http://{host}:{QBIT_PORT}/ 2>&1 | head -c 80 || true"
+        f"'http://{host}:{QBIT_PORT}/' 2>&1 | head -c 80 || true"
     )
     cp = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True)
     if cp.returncode == 0 and cp.stdout.strip():
@@ -279,7 +267,18 @@ def main() -> int:
         check=False,
     )
     import time
-    time.sleep(8)
+    for _ in range(30):
+        cp = subprocess.run(
+            ["bash", "-c", f"cd {stack} && docker compose ps gluetun"],
+            capture_output=True,
+            text=True,
+        )
+        if "Up" in cp.stdout and "Restarting" not in cp.stdout:
+            break
+        time.sleep(2)
+    else:
+        log("WARN: Gluetun not healthy — run: docker compose logs --tail=40 gluetun")
+        return 1
 
     user, password = read_handover(stack)
     prowlarr_key = read_xml_key(stack, "prowlarr")
