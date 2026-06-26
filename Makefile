@@ -24,7 +24,7 @@ REPO_DIR     := build/repository
 WIZARD_ZIP   := $(DIST)/$(WIZARD_ID)-$(WIZARD_VER).zip
 REPO_ZIP     := $(DIST)/$(REPO_ID)-$(REPO_VER).zip
 
-.PHONY: help all repo assets iptv install clean check catalog stage-bundle
+.PHONY: help all repo assets iptv install clean check catalog stage-bundle docs-serve
 
 help:
 	@awk -F':.*##' '/^[a-zA-Z_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -90,3 +90,6 @@ clean:  ## Delete built artifacts
 	rm -rf $(DIST)/*.zip iptv/dist/*.m3u iptv/dist/*.xml assets/branding/*.png assets/branding/*.jpg
 	rm -rf $(WIZARD_DIR)/resources/data
 	@echo "cleaned."
+
+docs-serve:  ## Serve docs/ at http://127.0.0.1:8765/ (HTML guides viewable in browser)
+	bash tools/serve-docs.sh

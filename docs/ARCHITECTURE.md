@@ -8,10 +8,8 @@
 > [`JELLYFIN.md`](JELLYFIN.md), [`SETUP-GUIDE.md`](SETUP-GUIDE.md), and
 > [`RDTV_TEST_CHEATSHEET.md`](RDTV_TEST_CHEATSHEET.md).
 >
-> **Note on live discovery:** the Port MCP server (infrastructure catalog) was
-> not authenticated in the environment that produced this report. All floor2
-> details below come from repo configuration, bootstrap code, and checked-in
-> operational docs—not from a live SSH session to floor2.
+> **View HTML in browser:** run `make docs-serve`, then open
+> `http://127.0.0.1:8765/ARCHITECTURE.html` (or the **Ports** panel in Cursor).
 
 ---
 
