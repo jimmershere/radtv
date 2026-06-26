@@ -149,10 +149,29 @@ def patch_compose_proton(compose: str) -> str:
     return compose
 
 
+def find_tmp_wg_conf() -> str:
+    """Locate a Proton WireGuard config dropped in /tmp on floor2."""
+    import glob
+    patterns = ("/tmp/*.conf", "/tmp/*proton*", "/tmp/*wg*", "/tmp/*radtv*")
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern)):
+            if not os.path.isfile(path):
+                continue
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    if "PrivateKey" in fh.read():
+                        return path
+            except OSError:
+                continue
+    return ""
+
+
 def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str]:
     key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip()
     addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip()
     conf = os.environ.get("PROTON_WG_CONF", "").strip()
+    if not conf and on_floor2():
+        conf = find_tmp_wg_conf()
     if conf:
         if not os.path.isfile(conf):
             log(f"ERROR: PROTON_WG_CONF not found: {conf}")

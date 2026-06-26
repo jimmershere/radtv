@@ -3932,10 +3932,16 @@ def cmd_repair(args: argparse.Namespace) -> int:
             err(f"repair script missing: {script}")
             return 1
         return subprocess.call([sys.executable, script])
+    if step_id in ("proton-cli", "proton-host", "fix-proton"):
+        script = os.path.join(REPO_ROOT, "tools", "floor2-fix-proton.sh")
+        if not os.path.isfile(script):
+            err(f"repair script missing: {script}")
+            return 1
+        return subprocess.call(["bash", script])
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        extra = ["sonarr", "qbittorrent", "gluetun"]
+        extra = ["sonarr", "qbittorrent", "gluetun", "fix-proton"]
         err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):
