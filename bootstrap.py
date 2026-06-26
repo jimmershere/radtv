@@ -1863,14 +1863,15 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun]
     environment:
-      - VPN_SERVICE_PROVIDER=${{VPN_SERVICE_PROVIDER:-mullvad}}
+      - VPN_SERVICE_PROVIDER=${{VPN_SERVICE_PROVIDER:-protonvpn}}
       - VPN_TYPE=${{VPN_TYPE:-wireguard}}
       - WIREGUARD_PRIVATE_KEY=${{WIREGUARD_PRIVATE_KEY:-}}
       - WIREGUARD_ADDRESSES=${{WIREGUARD_ADDRESSES:-}}
-      - OPENVPN_USER=${{OPENVPN_USER:-}}
-      - OPENVPN_PASSWORD=${{OPENVPN_PASSWORD:-}}
       - SERVER_COUNTRIES=${{SERVER_COUNTRIES:-USA}}
       - SERVER_CITIES=${{SERVER_CITIES:-}}
+      - VPN_PORT_FORWARDING=${{VPN_PORT_FORWARDING:-on}}
+      - VPN_PORT_FORWARDING_PROVIDER=${{VPN_PORT_FORWARDING_PROVIDER:-protonvpn}}
+      - PORT_FORWARD_ONLY=${{PORT_FORWARD_ONLY:-on}}
       - TZ=America/New_York
       - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
     ports:
@@ -1928,31 +1929,34 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - "8920:8920"   # HTTPS (optional)
 """
 
-    env_template = """# Gluetun VPN credentials. Until these are filled, the gluetun
-# container will restart-loop and qBittorrent will have no network.
-# Edit this file in place, then: `cd /datapool/preserved/radtv-arr && docker compose up -d gluetun qbittorrent`
+    env_template = """# Gluetun VPN — ProtonVPN + WireGuard (default for floor2 qBittorrent).
+# Until WIREGUARD_PRIVATE_KEY is filled, gluetun will restart-loop and qBit has no network.
+# Get a key: https://account.proton.me/vpn/WireGuard → generate config → copy PrivateKey
+# Apply: ./radtv repair gluetun   (from quasimodo)
 
-# Recommended: Mullvad ($5/mo flat, WireGuard, sign up anonymously with cash).
-# Pull these two values from https://mullvad.net/account/wireguard-config
-VPN_SERVICE_PROVIDER=mullvad
+VPN_SERVICE_PROVIDER=protonvpn
 VPN_TYPE=wireguard
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
 
-# Server preferences (optional). For US-locked content prefer USA.
+# US servers by default. Change if you prefer another exit country.
 SERVER_COUNTRIES=USA
 SERVER_CITIES=
 
-# Alternative providers — uncomment ONE section instead of Mullvad above:
-#
-# ProtonVPN (WireGuard):
-# VPN_SERVICE_PROVIDER=protonvpn
+# Port forwarding for torrents (Proton P2P servers). Requires paid Proton plan.
+VPN_PORT_FORWARDING=on
+VPN_PORT_FORWARDING_PROVIDER=protonvpn
+PORT_FORWARD_ONLY=on
+
+# --- Alternatives (do not mix with Proton WireGuard above) -------------------
+# Mullvad WireGuard:
+# VPN_SERVICE_PROVIDER=mullvad
 # VPN_TYPE=wireguard
 # WIREGUARD_PRIVATE_KEY=
 # WIREGUARD_ADDRESSES=
 #
-# ExpressVPN (OpenVPN — must be extracted from their manual setup page):
-# VPN_SERVICE_PROVIDER=expressvpn
+# Proton OpenVPN (not recommended — use WireGuard instead):
+# VPN_SERVICE_PROVIDER=protonvpn
 # VPN_TYPE=openvpn
 # OPENVPN_USER=
 # OPENVPN_PASSWORD=
@@ -3922,10 +3926,16 @@ def cmd_repair(args: argparse.Namespace) -> int:
             err(f"repair script missing: {script}")
             return 1
         return subprocess.call([sys.executable, script])
+    if step_id in ("gluetun", "protonvpn", "proton"):
+        script = os.path.join(REPO_ROOT, "tools", "floor2-set-gluetun-proton.py")
+        if not os.path.isfile(script):
+            err(f"repair script missing: {script}")
+            return 1
+        return subprocess.call([sys.executable, script])
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        extra = ["sonarr", "qbittorrent"]
+        extra = ["sonarr", "qbittorrent", "gluetun"]
         err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):
