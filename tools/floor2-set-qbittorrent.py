@@ -23,11 +23,17 @@ import sys
 import time
 from typing import Optional, Tuple
 
-FLOOR2_HOST = os.environ.get("FLOOR2_HOST", "192.168.1.206")
-FLOOR2_USER = os.environ.get("FLOOR2_USER", "floor2")
-STACK_CANDIDATES = (
-    "/datapool/preserved/badtv-arr",
-    "/datapool/preserved/radtv-arr",
+_TOOLS = os.path.dirname(os.path.abspath(__file__))
+if _TOOLS not in sys.path:
+    sys.path.insert(0, _TOOLS)
+from floor2_common import (
+    floor2_host,
+    floor2_user,
+    on_floor2,
+    run_remote,
+    ssh_destination,
+    ssh_preflight,
+    STACK_CANDIDATES,
 )
 
 # Set via env when running, or use the generated default below.
@@ -37,20 +43,6 @@ QBIT_PASS = os.environ.get("QBITTORRENT_PASSWORD", "J1mm3r-F2-qBT-9k!")
 
 def log(msg: str) -> None:
     print(msg, flush=True)
-
-
-def on_floor2() -> bool:
-    return os.path.isdir("/datapool/preserved")
-
-
-def run_remote(script: str) -> Tuple[int, str, str]:
-    cmd = ["ssh", "-o", "ConnectTimeout=15", f"{FLOOR2_USER}@{FLOOR2_HOST}", "bash", "-s"]
-    cp = subprocess.run(cmd, input=script, text=True, capture_output=True)
-    if cp.stdout:
-        print(cp.stdout, end="" if cp.stdout.endswith("\n") else "\n")
-    if cp.stderr:
-        print(cp.stderr, end="" if cp.stderr.endswith("\n") else "\n", file=sys.stderr)
-    return cp.returncode, cp.stdout, cp.stderr
 
 
 def detect_stack() -> str:
@@ -108,11 +100,19 @@ def find_qbit_service(compose: str) -> str:
 
 
 def main() -> int:
+    if not on_floor2() and not ssh_preflight():
+        log("ERROR: cannot SSH to floor2 from this machine")
+        log("  run: ./radtv repair floor2-ssh")
+        log("  or:  ssh floor2@192.168.1.206")
+        return 1
+
+    host = floor2_host()
     stack = detect_stack()
     conf_host = f"{stack}/qbittorrent/qBittorrent/qBittorrent.conf"
     handover = f"{stack}/qbittorrent/rdtv-qbit-handover.json"
 
     log(f"floor2 qBittorrent: user={QBIT_USER} port=8091")
+    log(f"target: {floor2_user()}@{host}")
     log(f"stack: {stack}")
 
     if on_floor2():
@@ -176,7 +176,7 @@ python3 - "$HANDOVER" <<'PY'
 import base64, json, os, sys
 path = sys.argv[1]
 payload = {{
-    "url": "http://192.168.1.206:8091",
+    "url": "http://{host}:8091",
     "username": base64.b64decode("{b64_user}").decode(),
     "password": base64.b64decode("{b64_pass}").decode(),
     "note": "qBittorrent Web UI via Gluetun on floor2",
@@ -200,7 +200,7 @@ docker compose ps "$svc" || true
             return code
 
     handover_data = {
-        "url": f"http://{FLOOR2_HOST}:8091",
+        "url": f"http://{host}:8091",
         "username": QBIT_USER,
         "password": QBIT_PASS,
         "note": "qBittorrent Web UI via Gluetun on floor2",
@@ -213,13 +213,13 @@ docker compose ps "$svc" || true
 
     log("")
     log("qBittorrent Web UI credentials:")
-    log(f"  URL:      http://{FLOOR2_HOST}:8091")
+    log(f"  URL:      http://{host}:8091")
     log(f"  Username: {QBIT_USER}")
     log(f"  Password: {QBIT_PASS}")
     log(f"  Handover: {handover} on floor2 (mode 0600)")
     log("")
     log("If login fails, ensure Gluetun is healthy first:")
-    log(f"  ssh {FLOOR2_USER}@{FLOOR2_HOST} 'cd {stack} && docker compose ps gluetun qbittorrent'")
+    log(f"  ssh {ssh_destination()} 'cd {stack} && docker compose ps gluetun qbittorrent'")
     return 0
 
 

@@ -7,6 +7,7 @@ existing free / open-source tooling and any subscription you already have.
 
 | Script                | What it does                                                  | sudo? |
 | --------------------- | ------------------------------------------------------------- | ----- |
+| `setup-floor2-ssh.sh` | Add `Host floor2` to `~/.ssh/config`, optional `/etc/hosts` entry, update `config/radtv.conf`. Run via `./radtv repair floor2-ssh`. | maybe |
 | `vpn-status.sh`       | Hit three independent public-IP echo services and print what each sees. Read-only. | no   |
 | `setup-wireguard.sh`  | Install `wireguard-tools` + `nftables` if missing. Copy a user-supplied `.conf` to `/etc/wireguard/radtv-wg.conf` with mode 600. Bring up the tunnel via `wg-quick`. Install an nftables kill-switch that drops non-WG egress. | yes |
 | `setup-dns.sh`        | Configure `systemd-resolved` to use Cloudflare 1.1.1.1 + Quad9 9.9.9.9 over DoT, with DNSSEC validation. Idempotent and revertible. | yes |
@@ -16,6 +17,10 @@ Every script supports `--dry-run` to preview changes without applying.
 ## Quick recipes
 
 ```bash
+# Wire SSH + hosts for floor2 NAS (quasimodo):
+./radtv repair floor2-ssh
+# then: ssh floor2
+
 # Just check what the world sees:
 bash tools/network/vpn-status.sh
 

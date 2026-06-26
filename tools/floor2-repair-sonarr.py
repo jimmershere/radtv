@@ -30,31 +30,21 @@ SONARR_VERSION = "4.0.18.2971"
 TV_SONARR_HOST = "/datapool/media/downloads/tv-sonarr"
 TV_SONARR_CONTAINER = "/media/downloads/tv-sonarr"
 
-FLOOR2_HOST = os.environ.get("FLOOR2_HOST", "192.168.1.206")
-FLOOR2_USER = os.environ.get("FLOOR2_USER", "floor2")
-STACK_CANDIDATES = (
-    "/datapool/preserved/badtv-arr",
-    "/datapool/preserved/radtv-arr",
+_TOOLS = os.path.dirname(os.path.abspath(__file__))
+if _TOOLS not in sys.path:
+    sys.path.insert(0, _TOOLS)
+from floor2_common import (
+    floor2_host,
+    floor2_user,
+    on_floor2,
+    run_remote,
+    ssh_preflight,
+    STACK_CANDIDATES,
 )
 
 
 def log(msg: str) -> None:
     print(msg, flush=True)
-
-
-def run_remote(script: str) -> Tuple[int, str, str]:
-    cmd = ["ssh", "-o", "ConnectTimeout=15", f"{FLOOR2_USER}@{FLOOR2_HOST}", "bash", "-s"]
-    log(f"  $ ssh {FLOOR2_USER}@{FLOOR2_HOST}")
-    cp = subprocess.run(cmd, input=script, text=True, capture_output=True)
-    if cp.stdout:
-        print(cp.stdout, end="" if cp.stdout.endswith("\n") else "\n")
-    if cp.stderr:
-        print(cp.stderr, end="" if cp.stderr.endswith("\n") else "\n", file=sys.stderr)
-    return cp.returncode, cp.stdout, cp.stderr
-
-
-def on_floor2() -> bool:
-    return os.path.isdir("/datapool/preserved")
 
 
 def shell_quote(s: str) -> str:
@@ -249,7 +239,12 @@ def restart_service(stack: str, service: str) -> None:
 
 def main() -> int:
     log(f"floor2 repair: Sonarr {SONARR_VERSION} + Knaben")
-    log(f"target: {FLOOR2_USER}@{FLOOR2_HOST}")
+    if not on_floor2() and not ssh_preflight():
+        log("ERROR: cannot SSH to floor2 from this machine")
+        log("  run: ./radtv repair floor2-ssh")
+        log("  or:  ssh floor2@192.168.1.206")
+        return 1
+    log(f"target: {floor2_user()}@{floor2_host()}")
 
     stack = detect_stack()
     log(f"stack: {stack}")
@@ -261,7 +256,7 @@ def main() -> int:
 
     prowlarr_key = read_xml_key(stack, "prowlarr")
     if prowlarr_key:
-        if fix_knaben(f"http://{FLOOR2_HOST}:9696", prowlarr_key):
+        if fix_knaben(f"http://{floor2_host()}:9696", prowlarr_key):
             restart_service(stack, "prowlarr")
     else:
         log("WARN: could not read Prowlarr API key — skip Knaben repair")
@@ -272,13 +267,13 @@ def main() -> int:
         m = re.search(r"container_name:\s*(\S+-rdtclient)", compose)
         rdt_host = m.group(1) if m else "badtv-rdtclient"
         try:
-            fix_sonarr_paths(f"http://{FLOOR2_HOST}:8989", sonarr_key, rdt_host)
+            fix_sonarr_paths(f"http://{floor2_host()}:8989", sonarr_key, rdt_host)
         except Exception as exc:
             log(f"WARN: Sonarr path mapping: {exc}")
 
     log("done.")
-    log(f"Sonarr:   http://{FLOOR2_HOST}:8989")
-    log(f"Prowlarr: http://{FLOOR2_HOST}:9696")
+    log(f"Sonarr:   http://{floor2_host()}:8989")
+    log(f"Prowlarr: http://{floor2_host()}:9696")
     return 0
 
 
