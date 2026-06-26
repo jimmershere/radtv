@@ -19,12 +19,23 @@ This document records the GitHub and package migration from the old `badtv` home
 - IPTV generated files: `iptv/dist/badtv.m3u` and `iptv/dist/badtv.xml` → `iptv/dist/radtv.m3u` and `iptv/dist/radtv.xml`
 - Skin color override: `badtv.xml` → `radtv.xml`
 ## Fresh clone
-Use the new repository for all future installs:
+Use the clone helper to avoid `/app/radtv/radtv` double-nesting:
+
+```bash
+bash clone.sh /app/radtv
+cd /app/radtv
+./radtv setup
+```
+
+Or manually:
+
 ```bash
 git clone https://github.com/jimmershere/radtv.git
 cd radtv
 ./radtv setup
 ```
+
+Never `git clone ... radtv` **inside** an existing `radtv/` folder.
 The old `jimmershere/badtv` repository is intentionally no longer public and should not be used as an install source.
 ## Existing local clones
 For a clone that still points at `jimmershere/badtv`, repoint `origin` to the new repository:

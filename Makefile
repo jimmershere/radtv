@@ -93,3 +93,6 @@ clean:  ## Delete built artifacts
 
 docs-serve:  ## Serve docs/ at http://127.0.0.1:8765/ (HTML guides viewable in browser)
 	bash tools/serve-docs.sh
+
+fix-layout:  ## Flatten a double-nested radtv/radtv clone
+	bash tools/fix-nested-clone.sh

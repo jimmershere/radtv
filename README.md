@@ -62,11 +62,31 @@ free / lawful US linear sources, the strongest community scrapers, and
 
 ## Quick install
 
+**Avoid double-nesting** (`/app/radtv/radtv`). Use the clone helper:
+
+```bash
+bash clone.sh /app/radtv
+cd /app/radtv
+./radtv setup
+```
+
+Already nested? Flatten in place:
+
+```bash
+cd /app/radtv    # the *outer* radtv folder
+bash tools/fix-nested-clone.sh
+./radtv repair sonarr
+```
+
+Manual clone (also fine):
+
 ```bash
 git clone https://github.com/jimmershere/radtv.git
 cd radtv
 ./radtv setup
 ```
+
+Do **not** run `git clone ... radtv` inside an existing `radtv/` directory.
 
 That single command is the entire first run. It:
 

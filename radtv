@@ -1,6 +1,49 @@
 #!/usr/bin/env bash
-# Thin shim around bootstrap.py. Lets users run `./radtv setup` without
-# remembering to invoke python3 themselves.
-set -e
-HERE="$(cd "$(dirname "$0")" && pwd)"
-exec python3 "$HERE/bootstrap.py" "$@"
+# R&Dtv CLI — finds bootstrap.py even when the clone layout is nested.
+set -euo pipefail
+
+_shim="$(cd "$(dirname "$0")" && pwd)"
+
+find_root() {
+  # Same directory as this shim?
+  if [[ -f "$_shim/bootstrap.py" ]]; then
+    echo "$_shim"
+    return 0
+  fi
+  # Delegate to tools/find-repo-root.sh if present next to us
+  local finder="$_shim/tools/find-repo-root.sh"
+  if [[ -f "$finder" ]]; then
+    bash "$finder" && return 0
+  fi
+  # Walk up from shim location
+  local d="$_shim"
+  for _ in 1 2 3 4 5 6; do
+    if [[ -f "$d/bootstrap.py" ]]; then
+      echo "$d"
+      return 0
+    fi
+    [[ "$d" == "/" ]] && break
+    d="$(dirname "$d")"
+  done
+  return 1
+}
+
+ROOT="$(find_root)" || {
+  echo "radtv: cannot find bootstrap.py near $_shim" >&2
+  echo "" >&2
+  echo "Common fixes:" >&2
+  echo "  cd radtv                         # if you cloned into a parent dir" >&2
+  echo "  bash tools/fix-nested-clone.sh   # if you have radtv/radtv/" >&2
+  echo "  bash clone.sh /app/radtv         # clean re-clone" >&2
+  echo "" >&2
+  echo "Or run directly:" >&2
+  echo "  python3 tools/floor2-repair-sonarr.py" >&2
+  exit 1
+}
+
+if [[ "$ROOT" != "$_shim" && "${RADTV_LAYOUT_WARNED:-}" != 1 ]]; then
+  export RADTV_LAYOUT_WARNED=1
+  echo "radtv: using repo root $ROOT" >&2
+fi
+
+exec python3 "$ROOT/bootstrap.py" "$@"
