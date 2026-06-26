@@ -169,6 +169,8 @@ TORBOX_USER_URL = f"{TORBOX_BASE_URL}/user/me"
 # Firefox). Drop-in: same port 8191, same JSON API, so Prowlarr's existing
 # "FlareSolverr" indexer-proxy implementation continues to work.
 BYPARR_IMAGE = "ghcr.io/thephaseless/byparr:latest"
+SONARR_IMAGE = "lscr.io/linuxserver/sonarr:4.0.18.2971-ls315"
+SONARR_VERSION = "4.0.18.2971"
 
 # Usenet defaults. NZBGeek = open-registration NZB indexer ($10/yr). Pair with
 # a Usenet provider (Eweka / Newshosting / Frugal). Usenet sidesteps Cloudflare
@@ -1722,6 +1724,37 @@ def _seed_library_scraper_assignments(mnt: str) -> None:
     ok(f"  MyVideos121.db: 3 paths assigned to TheMovieDb scraper")
 
 
+def _repair_knaben_indexer(prowlarr_url: str, apikey: str) -> None:
+    """Remove/re-add Knaben so Prowlarr picks up knaben.org (not legacy .eu)."""
+    indexers = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/indexer") or []
+    knaben = next((i for i in indexers if i.get("name") == "Knaben"), None)
+    if knaben:
+        _prowlarr_api(prowlarr_url, apikey, "DELETE",
+                      f"/api/v1/indexer/{knaben['id']}")
+        ok("  Knaben: removed stale definition for re-add")
+    schemas = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/indexer/schema") or []
+    schema = next((s for s in schemas if s.get("name") == "Knaben"), None)
+    if not schema:
+        warn("  Knaben: schema missing — update Prowlarr to latest")
+        return
+    profiles = _prowlarr_api(prowlarr_url, apikey, "GET", "/api/v1/appprofile") or []
+    profile_id = profiles[0]["id"] if profiles else 1
+    payload = {k: v for k, v in schema.items()
+               if k not in ("id", "indexerUrls", "legacyUrls", "definitionName")}
+    payload.update({"name": "Knaben", "enable": True,
+                    "appProfileId": profile_id, "priority": 25})
+    res = _prowlarr_api(prowlarr_url, apikey, "POST", "/api/v1/indexer",
+                        payload=payload, ignore_dupe=True)
+    if res and res.get("id"):
+        ok("  Knaben: re-added (knaben.org API)")
+        try:
+            _prowlarr_api(prowlarr_url, apikey, "POST", "/api/v1/indexer/testall")
+        except Exception:
+            pass
+    else:
+        warn("  Knaben: re-add failed")
+
+
 def step_prowlarr(state: Dict[str, Any]) -> bool:
     """Deploy Prowlarr + FlareSolverr as Docker containers on floor2,
     then wire the resulting API endpoint into Jacktook.
@@ -1763,7 +1796,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
         return True
 
     info("deploying full arr+rdt stack at /datapool/preserved/radtv-arr/")
-    compose_yml = """services:
+    compose_yml = f"""services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: radtv-prowlarr
@@ -1786,13 +1819,14 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     ports: ["8191:8191"]
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    image: {SONARR_IMAGE}
     container_name: radtv-sonarr
     restart: unless-stopped
     environment: [PUID=1000, PGID=1000, TZ=America/New_York]
     volumes:
       - ./sonarr:/config
       - /datapool/media:/media
+      - /datapool/media/downloads/tv-sonarr:/media/downloads/tv-sonarr
     ports: ["8989:8989"]
     depends_on: [prowlarr]
 
@@ -1931,8 +1965,10 @@ STACK=/datapool/preserved/radtv-arr
 sudo mkdir -p $STACK/prowlarr $STACK/byparr $STACK/sonarr $STACK/radarr \\
               $STACK/rdt-client/data $STACK/gluetun $STACK/qbittorrent \\
               $STACK/sabnzbd $STACK/jellyfin \\
-              /datapool/media/qbit-downloads /datapool/media/usenet
-sudo chown -R floor2:floor2 $STACK /datapool/media/qbit-downloads
+              /datapool/media/qbit-downloads /datapool/media/usenet \\
+              /datapool/media/downloads/tv-sonarr
+sudo chown -R floor2:floor2 $STACK /datapool/media/qbit-downloads \\
+              /datapool/media/downloads/tv-sonarr
 if [ ! -f $STACK/.env ]; then
   cat > $STACK/.env <<'ENV'
 {env_template}
@@ -2015,6 +2051,9 @@ docker compose up -d
         else:
             warn(f"  {w}: add failed (may be upstream-flaky)")
 
+    # Knaben often rots to knaben.eu legacy defs — force a clean re-add.
+    _repair_knaben_indexer(prowlarr_url, apikey)
+
     info(f"Prowlarr now has {len(existing) + added} indexers")
 
     # Wire into Jacktook
@@ -2063,30 +2102,38 @@ docker compose up -d
                  payload={"path": "/media/movies"}, ignore_dupe=True)
         ok("Radarr root folder: /media/movies")
 
-    # Critical: register a Remote Path Mapping in BOTH *arr so they translate
-    # rdt-client's reported `/datapool/media/downloads/...` (the host path,
-    # because rdt-client mounts /datapool/media/downloads:/data/downloads
-    # but reports the host side) into `/media/downloads/...` (what Sonarr
-    # /Radarr can actually read via their own /datapool/media:/media mount).
-    # Without this map, completed downloads from rdt-client sit in queue
-    # with trackedDownloadStatus=warning and never get imported.
-    for url, key, label in (
-        (sonarr_url, sona_key, "Sonarr"),
-        (radarr_url, rada_key, "Radarr"),
-    ):
-        if not key: continue
-        existing_maps = _arr_api(url, key, "GET", "/api/v3/remotepathmapping") or []
-        if any("/datapool/media/" in (m.get("remotePath") or "") for m in existing_maps):
-            ok(f"  {label}: remote-path map already exists")
-            continue
-        res = _arr_api(url, key, "POST", "/api/v3/remotepathmapping",
-                       payload={"host": "radtv-rdtclient",
-                                "remotePath": "/datapool/media/downloads/",
-                                "localPath":  "/media/downloads/"},
-                       ignore_dupe=True)
-        if res:
-            ok(f"  {label}: remote-path map registered "
-               "(rdt-client → /media/downloads/)")
+    # Critical: register Remote Path Mappings so *arr translate rdt-client's
+    # host-side /datapool/media/downloads/... into container /media/downloads/...
+    if sona_key:
+        sonarr_maps = _arr_api(sonarr_url, sona_key, "GET",
+                               "/api/v3/remotepathmapping") or []
+        for remote, local in (
+            ("/datapool/media/downloads/", "/media/downloads/"),
+            ("/datapool/media/downloads/tv-sonarr/", "/media/downloads/tv-sonarr/"),
+        ):
+            if any(remote == (m.get("remotePath") or "") for m in sonarr_maps):
+                ok(f"  Sonarr: remote-path map exists ({remote})")
+                continue
+            res = _arr_api(sonarr_url, sona_key, "POST", "/api/v3/remotepathmapping",
+                           payload={"host": "radtv-rdtclient",
+                                    "remotePath": remote, "localPath": local},
+                           ignore_dupe=True)
+            if res:
+                ok(f"  Sonarr: remote-path map ({remote} → {local})")
+    if rada_key:
+        radarr_maps = _arr_api(radarr_url, rada_key, "GET",
+                               "/api/v3/remotepathmapping") or []
+        remote = "/datapool/media/downloads/"
+        local = "/media/downloads/"
+        if any(remote == (m.get("remotePath") or "") for m in radarr_maps):
+            ok(f"  Radarr: remote-path map exists ({remote})")
+        else:
+            res = _arr_api(radarr_url, rada_key, "POST", "/api/v3/remotepathmapping",
+                           payload={"host": "radtv-rdtclient",
+                                    "remotePath": remote, "localPath": local},
+                           ignore_dupe=True)
+            if res:
+                ok(f"  Radarr: remote-path map ({remote} → {local})")
 
     # Register Sonarr + Radarr in Prowlarr so it auto-pushes indexers
     app_schemas = _prowlarr_api(prowlarr_url, apikey, "GET",
@@ -3858,6 +3905,9 @@ def cmd_launch(args: argparse.Namespace) -> int:
 
 def cmd_repair(args: argparse.Namespace) -> int:
     step_id = args.step
+    if step_id == "sonarr":
+        script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
+        return subprocess.call([sys.executable, script])
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
