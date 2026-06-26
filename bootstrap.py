@@ -3913,6 +3913,12 @@ def cmd_launch(args: argparse.Namespace) -> int:
 
 def cmd_repair(args: argparse.Namespace) -> int:
     step_id = args.step
+    if step_id in ("floor2-ssh", "ssh-floor2", "floor2-hosts"):
+        script = os.path.join(REPO_ROOT, "tools", "network", "setup-floor2-ssh.sh")
+        if not os.path.isfile(script):
+            err(f"repair script missing: {script}")
+            return 1
+        return subprocess.call(["bash", script])
     if step_id == "sonarr":
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if not os.path.isfile(script):
@@ -3941,7 +3947,7 @@ def cmd_repair(args: argparse.Namespace) -> int:
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        extra = ["sonarr", "qbittorrent", "gluetun", "fix-proton"]
+        extra = ["floor2-ssh", "sonarr", "qbittorrent", "gluetun", "fix-proton"]
         err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):

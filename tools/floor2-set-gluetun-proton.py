@@ -26,11 +26,17 @@ import subprocess
 import sys
 from typing import Dict, Optional, Tuple
 
-FLOOR2_HOST = os.environ.get("FLOOR2_HOST", "192.168.1.206")
-FLOOR2_USER = os.environ.get("FLOOR2_USER", "floor2")
-STACK_CANDIDATES = (
-    "/datapool/preserved/badtv-arr",
-    "/datapool/preserved/radtv-arr",
+_TOOLS = os.path.dirname(os.path.abspath(__file__))
+if _TOOLS not in sys.path:
+    sys.path.insert(0, _TOOLS)
+from floor2_common import (
+    floor2_host,
+    floor2_user,
+    on_floor2,
+    run_remote,
+    ssh_destination,
+    ssh_preflight,
+    STACK_CANDIDATES,
 )
 
 PROTON_ENV = {
@@ -48,20 +54,6 @@ PROTON_ENV = {
 
 def log(msg: str) -> None:
     print(msg, flush=True)
-
-
-def on_floor2() -> bool:
-    return os.path.isdir("/datapool/preserved")
-
-
-def run_remote(script: str) -> Tuple[int, str, str]:
-    cmd = ["ssh", "-o", "ConnectTimeout=15", f"{FLOOR2_USER}@{FLOOR2_HOST}", "bash", "-s"]
-    cp = subprocess.run(cmd, input=script, text=True, capture_output=True)
-    if cp.stdout:
-        print(cp.stdout, end="" if cp.stdout.endswith("\n") else "\n")
-    if cp.stderr:
-        print(cp.stderr, end="" if cp.stderr.endswith("\n") else "\n", file=sys.stderr)
-    return cp.returncode, cp.stdout, cp.stderr
 
 
 def detect_stack() -> str:
@@ -187,11 +179,18 @@ def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str]:
 
 
 def main() -> int:
+    if not on_floor2() and not ssh_preflight():
+        log("ERROR: cannot SSH to floor2 from this machine")
+        log("  run: ./radtv repair floor2-ssh")
+        log("  or:  ssh floor2@192.168.1.206")
+        return 1
+
     stack = detect_stack()
     env_path = f"{stack}/.env"
     compose_path = f"{stack}/docker-compose.yml"
 
     log("floor2 Gluetun → ProtonVPN + WireGuard")
+    log(f"target: {floor2_user()}@{floor2_host()}")
     log(f"stack: {stack}")
 
     if on_floor2():
@@ -324,7 +323,7 @@ docker compose logs --tail=40 gluetun || true
     log("  WIREGUARD_PRIVATE_KEY='...' ./radtv repair gluetun")
     log("  https://account.proton.me/vpn/WireGuard")
     log("")
-    log(f"  ssh {FLOOR2_USER}@{FLOOR2_HOST} 'cd {stack} && docker compose logs --tail=50 gluetun'")
+    log(f"  ssh {ssh_destination()} 'cd {stack} && docker compose logs --tail=50 gluetun'")
     return 0
 
 

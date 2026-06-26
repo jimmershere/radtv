@@ -114,7 +114,8 @@ maintenance mode -- refresh scraper catalog, check anonymizer status,
 add NAS sources, re-apply the theme, run a library scan. None of the
 fragile install steps live there.
 
-Status: `./radtv status`.  Re-run one step: `./radtv repair <step>`.
+Status: `./radtv status`.  Re-run one step: `./radtv repair <step>` (e.g.
+`floor2-ssh` once from quasimodo, then `sonarr`, `gluetun`, `qbittorrent`).
 Just launch Kodi: `./radtv launch`.
 
 Long-form: [`docs/INSTALL.md`](docs/INSTALL.md).

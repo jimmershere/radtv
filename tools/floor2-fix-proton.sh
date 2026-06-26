@@ -5,8 +5,8 @@
 # Run ON floor2:
 #   cd /app/radtv && git pull && sudo bash tools/floor2-fix-proton.sh
 #
-# Or from quasimodo:
-#   ssh floor2@192.168.1.206 'bash -s' < tools/floor2-fix-proton.sh
+# Or from quasimodo (after ./radtv repair floor2-ssh):
+#   ssh floor2 'bash -s' < tools/floor2-fix-proton.sh
 #
 # After this script:
 #   protonvpn-cli login jimmershere@proton.me   # interactive — needs your Proton password

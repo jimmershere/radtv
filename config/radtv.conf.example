@@ -16,7 +16,12 @@ RADTV_REPO_RAW_URL="https://raw.githubusercontent.com/${RADTV_REPO_OWNER}/${RADT
 # --- Media server (floor2 by default) -----------------------------------------
 # The local-network NAS where movies/TV/music live. NFS exports + Samba shares
 # get configured against this host.
-FLOOR2_HOST="192.168.1.206"
+#
+# Run once from quasimodo to wire SSH + /etc/hosts:
+#   ./radtv repair floor2-ssh
+# That sets ~/.ssh/config Host floor2 -> 192.168.1.206 and updates this file.
+FLOOR2_HOST="floor2"
+FLOOR2_IP="192.168.1.206"
 FLOOR2_USER="radtv"
 FLOOR2_ZFS_POOL="datapool"
 FLOOR2_ZFS_DATASET="${FLOOR2_ZFS_POOL}/media"
