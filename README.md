@@ -201,6 +201,8 @@ Full design + maintenance flow: [`docs/SCRAPERS.md`](docs/SCRAPERS.md).
 
 ## Start here
 
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full system tutorial (Kodi + floor2 + Jellyfin)
+- [`docs/ARCHITECTURE.html`](docs/ARCHITECTURE.html) — same guide, styled HTML for browser reading
 - [`DISCLAIMER.md`](DISCLAIMER.md) — read first
 - [`NOTICE.md`](NOTICE.md) — third-party trademarks
 - [`docs/PRIVACY.md`](docs/PRIVACY.md) — VPN / DNS / anonymizer guide

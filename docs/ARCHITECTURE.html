@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R&amp;Dtv Architecture &amp; Tutorial</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1c1c1c;
+      --text: #e8e4dc;
+      --muted: #a89e84;
+      --accent: #d4a24c;
+      --emerald: #0e3b2e;
+      --brick: #6b1a1f;
+      --link: #7ec8a8;
+      --border: #2a2a2a;
+      --code-bg: #1a1a1a;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    a { color: var(--link); }
+    a:hover { color: var(--accent); }
+    header.hero {
+      background: linear-gradient(135deg, var(--emerald) 0%, var(--bg) 60%);
+      border-bottom: 3px solid var(--accent);
+      padding: 2.5rem 2rem 2rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.5rem;
+      font-size: 2.2rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+    header.hero .subtitle {
+      color: var(--muted);
+      max-width: 52rem;
+      margin: 0;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 0;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; }
+      nav.toc { position: static; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 1.5rem 1rem;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    nav.toc strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+    }
+    nav.toc ol {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+    nav.toc li { margin: 0.35rem 0; }
+    main {
+      padding: 2rem 2.5rem 4rem;
+      min-width: 0;
+    }
+    h2 {
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      margin-top: 2.5rem;
+    }
+    h3 { color: var(--muted); margin-top: 1.75rem; }
+    h4 { color: var(--text); margin-top: 1.25rem; }
+    .callout {
+      background: var(--surface2);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+      border-radius: 0 6px 6px 0;
+    }
+    .callout.warn { border-left-color: var(--brick); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--emerald);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    tr:nth-child(even) td { background: var(--surface); }
+    pre, code {
+      font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      font-size: 0.88em;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      line-height: 1.45;
+    }
+    code {
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    pre code { background: none; padding: 0; }
+    .diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      white-space: pre;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--emerald);
+      color: var(--accent);
+      padding: 0.15em 0.55em;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .path-list { list-style: none; padding: 0; }
+    .path-list li {
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .path-list li:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>R&amp;Dtv Architecture &amp; Tutorial</h1>
+  <p class="subtitle">
+  A thorough guide to how R&amp;Dtv, Kodi, floor2, and Jellyfin work together.
+  Black Donnellys palette optional but recommended.
+  </p>
+</header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Table of contents">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#s1">What is R&amp;Dtv?</a></li>
+    <li><a href="#s2">What is floor2?</a></li>
+    <li><a href="#s3">The big picture</a></li>
+    <li><a href="#s4">Layer breakdown</a></li>
+    <li><a href="#s5">Media flows</a></li>
+    <li><a href="#s6">Kodi frontend</a></li>
+    <li><a href="#s7">Jellyfin frontend</a></li>
+    <li><a href="#s8">floor2 server</a></li>
+    <li><a href="#s9">Configuration</a></li>
+    <li><a href="#s10">Setup tutorial</a></li>
+    <li><a href="#s11">Operations</a></li>
+    <li><a href="#s12">Legacy naming</a></li>
+    <li><a href="#s13">Security</a></li>
+    <li><a href="#s14">Troubleshooting</a></li>
+    <li><a href="#s15">Further reading</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<div class="callout warn">
+  <strong>Discovery note:</strong> the Port MCP infrastructure catalog was not
+  authenticated when this document was generated. All floor2 details come from
+  repository configuration, bootstrap code, and checked-in operational docs—not
+  from a live SSH session.
+</div>
+
+<section id="s1">
+<h2>1. What is R&amp;Dtv?</h2>
+<p>
+<strong>R&amp;Dtv</strong> (née <em>B@Dtv</em>, originally <em>TerraKodi</em>) is
+TheClawFirm's pre-configured Kodi distribution. It is <strong>packaging
+software</strong>—not a streaming service. R&amp;Dtv does not host, transmit, or
+mirror audiovisual content.
+</p>
+<ul>
+  <li>Installs and configures Kodi with a curated addon stack</li>
+  <li>Merges lawful free/ad-supported IPTV into a single playlist</li>
+  <li>Applies a <strong>Black Donnellys</strong> color theme</li>
+  <li>Optionally wires a home NAS (floor2) and self-hosted *arr + Jellyfin stack</li>
+  <li>Automates Real-Debrid, TorBox, Trakt, and VPN via <code>./radtv setup</code></li>
+</ul>
+
+<h3>What ships in the repo</h3>
+<table>
+  <thead><tr><th>Path</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>radtv</code> / <code>bootstrap.py</code></td><td>Host-side setup wizard (15+ steps)</td></tr>
+    <tr><td><code>build/wizard/</code></td><td>In-Kodi maintenance wizard</td></tr>
+    <tr><td><code>iptv/</code></td><td>IPTV source list + playlist builder</td></tr>
+    <tr><td><code>config/radtv.conf.example</code></td><td>Single source of truth for hosts/paths</td></tr>
+    <tr><td><code>media-server/</code></td><td>NFS/SMB setup scripts for NAS</td></tr>
+    <tr><td><code>tools/</code></td><td>Repo packager, RD token rotator, audits</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s2">
+<h2>2. What is floor2?</h2>
+<p>
+<strong>floor2</strong> is TheClawFirm's reference media server: an 8 TB ZFS box
+on the LAN at <code>192.168.1.206</code>.
+</p>
+
+<h3>Three roles</h3>
+<ol>
+  <li><strong>Storage backbone</strong> — ZFS <code>/datapool/media</code></li>
+  <li><strong>Automation hub</strong> — Docker *arr stack + Jellyfin</li>
+  <li><strong>Network share</strong> — NFS/SMB exports for direct Kodi access</li>
+</ol>
+
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>LAN IP</td><td><code>192.168.1.206</code></td></tr>
+    <tr><td>ZFS pool</td><td><code>datapool</code></td></tr>
+    <tr><td>Media path</td><td><code>/datapool/media</code></td></tr>
+    <tr><td>Docker stack</td><td><code>/datapool/preserved/badtv-arr</code> <span class="badge">legacy name</span></td></tr>
+    <tr><td>Jellyfin</td><td><code>http://192.168.1.206:8096</code></td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s3">
+<h2>3. The big picture</h2>
+<div class="diagram">┌─────────────────────────────────────────────────────────────────────────┐
+│  KODI CLIENT (TV box, laptop, LibreELEC)                                  │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  ┌────────────────┐  │
+│  │ Live TV     │  │ Free VOD     │  │ Scrapers    │  │ Owned library  │  │
+│  │ (IPTV/PVR)  │  │ (Tubi/Pluto) │  │ (Umbrella…) │  │ (Jellyfin/NFS) │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬──────┘  └───────┬────────┘  │
+│         └────────────────┴─────────────────┴──────────────────┘           │
+│                          ./radtv setup  +  script.radtv.wizard             │
+└────────────────────────────────────┼─────────────────────────────────────┘
+                                     │ LAN
+┌────────────────────────────────────┼─────────────────────────────────────┐
+│  FLOOR2 (192.168.1.206)            ▼                                     │
+│  ZFS /datapool/media  →  movies/  tv/  music/  downloads/                 │
+│  ┌───────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  │
+│  │ NFS / SMB     │  │  Docker *arr stack      │  │  Jellyfin :8096  │  │
+│  └───────────────┘  └─────────────────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘</div>
+
+<h3>2026 design philosophy</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td>Owned library (*arr + Jellyfin)</td><td>Canonical long-term media you control</td></tr>
+    <tr><td>Usenet (SABnzbd)</td><td>Stable acquisition without Cloudflare</td></tr>
+    <tr><td>TorBox</td><td>Parallel debrid alongside Real-Debrid</td></tr>
+    <tr><td>Scrapers (Umbrella, Jacktook)</td><td>Supplemental discovery over owned library</td></tr>
+    <tr><td>Free IPTV</td><td>Lawful linear TV (Pluto, Plex Live, Samsung TV+, Stirr)</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s4">
+<h2>4. Layer-by-layer breakdown</h2>
+
+<h3>4.1 Host bootstrap (<code>./radtv setup</code>)</h3>
+<p>Stdlib Python TUI. State in <code>~/.config/radtv/state.json</code>. Key steps:</p>
+<table>
+  <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>apt</code></td><td>Kodi + binary addons, mpv, wireguard</td></tr>
+    <tr><td><code>grey_addons</code></td><td>ResolveURL, Umbrella, Seren, POV</td></tr>
+    <tr><td><code>floor2</code></td><td>SSHFS mount + Kodi sources.xml</td></tr>
+    <tr><td><code>prowlarr</code></td><td>Full Docker stack on floor2</td></tr>
+    <tr><td><code>usenet</code></td><td>SABnzbd + NZB indexer (optional)</td></tr>
+    <tr><td><code>jellyfin</code></td><td>Jellyfin + Kodi sync addon (optional)</td></tr>
+    <tr><td><code>pvr</code></td><td>IPTV Simple Client → radtv.m3u</td></tr>
+    <tr><td><code>realdebrid</code> / <code>torbox</code> / <code>trakt</code></td><td>OAuth / API key flows</td></tr>
+  </tbody>
+</table>
+<pre><code>./radtv status
+./radtv repair jellyfin
+./radtv repair prowlarr
+./radtv launch</code></pre>
+
+<h3>4.2 In-Kodi wizard</h3>
+<p>Maintenance mode from <strong>Programs → R&amp;Dtv Wizard</strong>:</p>
+<ul>
+  <li>Scraper catalog show/install/refresh</li>
+  <li>Anonymizer status check</li>
+  <li>Add floor2 NFS sources</li>
+  <li>Re-apply theme, library scan</li>
+</ul>
+
+<h3>4.3 floor2 Docker stack</h3>
+<table>
+  <thead><tr><th>Container</th><th>Port</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>radtv-prowlarr</code></td><td>9696</td><td>Indexer manager</td></tr>
+    <tr><td><code>radtv-byparr</code></td><td>8191</td><td>Cloudflare bypass</td></tr>
+    <tr><td><code>radtv-sonarr</code></td><td>8989</td><td>TV → /media/tv</td></tr>
+    <tr><td><code>radtv-radarr</code></td><td>7878</td><td>Movies → /media/movies</td></tr>
+    <tr><td><code>radtv-rdtclient</code></td><td>6500</td><td>Real-Debrid client</td></tr>
+    <tr><td><code>radtv-qbittorrent</code></td><td>8091</td><td>Torrents via Gluetun VPN</td></tr>
+    <tr><td><code>radtv-sabnzbd</code></td><td>8080</td><td>Usenet</td></tr>
+    <tr><td><code>radtv-jellyfin</code></td><td>8096</td><td>Read-only media server</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s5">
+<h2>5. How media flows</h2>
+
+<h3>5.1 Acquisition</h3>
+<ol>
+  <li><strong>Prowlarr</strong> aggregates indexers; <strong>Byparr</strong> bypasses Cloudflare</li>
+  <li><strong>Sonarr/Radarr</strong> send grabs to download clients</li>
+  <li><strong>rdt-client</strong> (RD), <strong>qBittorrent</strong> (VPN), <strong>SABnzbd</strong> (Usenet) fetch files</li>
+  <li>Completed media lands in <code>/datapool/media/movies</code> and <code>/datapool/media/tv</code></li>
+</ol>
+
+<h3>5.2 Playback</h3>
+<ul>
+  <li><strong>Jellyfin</strong> indexes <code>/media</code> read-only → browsers, apps, Kodi sync</li>
+  <li><strong>NFS/SMB</strong> → Kodi direct library scan</li>
+  <li><strong>IPTV/scrapers</strong> → streaming without owned files</li>
+</ul>
+</section>
+
+<section id="s6">
+<h2>6. Kodi: the living-room frontend</h2>
+<table>
+  <thead><tr><th>Tier</th><th>Examples</th></tr></thead>
+  <tbody>
+    <tr><td>Live TV</td><td>PVR IPTV Simple → radtv.m3u</td></tr>
+    <tr><td>Free VOD</td><td>YouTube, Pluto TV, Tubi, PlexMod</td></tr>
+    <tr><td>Grey scrapers</td><td>Umbrella, Seren, POV + Real-Debrid/TorBox</td></tr>
+    <tr><td>Torrent</td><td>Elementum, Jacktook + Prowlarr</td></tr>
+    <tr><td>Library sync</td><td>plugin.video.jellyfin</td></tr>
+  </tbody>
+</table>
+
+<h3>Recommended folder layout</h3>
+<pre><code>/media/
+├── Movies/     Movie Name (Year)/Movie Name (Year).mkv
+├── TV/         Show Name/Season 01/Show Name - s01e01.mkv
+├── Music/
+└── Photos/</code></pre>
+</section>
+
+<section id="s7">
+<h2>7. Jellyfin: the owned-library frontend</h2>
+<p>
+Jellyfin is the <strong>presentation layer</strong> for *arr-managed media.
+Sonarr/Radarr/download clients <em>write</em>; Jellyfin <em>reads</em> and serves.
+</p>
+
+<table>
+  <thead><tr><th>Library</th><th>Container path</th></tr></thead>
+  <tbody>
+    <tr><td>Movies</td><td><code>/media/movies</code></td></tr>
+    <tr><td>Shows</td><td><code>/media/tv</code></td></tr>
+  </tbody>
+</table>
+
+<p>Mount: <code>/datapool/media:/media:ro</code> (read-only by design).</p>
+
+<h3>Bootstrap provisioning</h3>
+<p>When opted in, <code>step_jellyfin</code>:</p>
+<ol>
+  <li>Starts Jellyfin container on floor2</li>
+  <li>Creates admin, libraries, API key via REST API</li>
+  <li>Installs Jellyfin-for-Kodi and pre-seeds connection</li>
+</ol>
+<pre><code>./radtv repair jellyfin</code></pre>
+</section>
+
+<section id="s8">
+<h2>8. floor2: the media server</h2>
+<pre><code>datapool/
+├── media/                    # NFS export /media
+│   ├── movies/  tv/  music/  downloads/  …
+└── preserved/badtv-arr/      # Docker stack (legacy dirname)
+    ├── docker-compose.yml
+    └── jellyfin/rdtv-admin.json   # credentials (0600, not in Git)</code></pre>
+
+<h3>NFS setup</h3>
+<pre><code># On floor2:
+sudo bash media-server/setup-nfs.sh
+
+# On Kodi client:
+bash install.sh
+# or wizard → "Add floor2 NFS media sources"</code></pre>
+</section>
+
+<section id="s9">
+<h2>9. Configuration</h2>
+<pre><code>cp config/radtv.conf.example config/radtv.conf
+$EDITOR config/radtv.conf</code></pre>
+<table>
+  <thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>FLOOR2_HOST</code></td><td><code>192.168.1.206</code></td><td>NAS IP</td></tr>
+    <tr><td><code>FLOOR2_MOUNTPOINT</code></td><td><code>/media</code></td><td>Export path</td></tr>
+    <tr><td><code>FLOOR2_SUBDIRS</code></td><td>Movies TV Music Photos</td><td>Library folders</td></tr>
+    <tr><td><code>RADTV_SKIN_TARGET</code></td><td>arctic-zephyr-reloaded</td><td>Theme skin</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s10">
+<h2>10. First-time setup tutorial</h2>
+
+<h3>Path A — full automated (recommended)</h3>
+<pre><code>git clone https://github.com/jimmershere/radtv.git
+cd radtv
+cp config/radtv.conf.example config/radtv.conf
+./radtv setup</code></pre>
+<p>Then: <strong>Programs → R&amp;Dtv Wizard</strong>, <strong>TV → Guide</strong>, Jellyfin at <code>:8096</code>.</p>
+
+<h3>Path B — NAS only</h3>
+<pre><code>sudo bash media-server/setup-nfs.sh   # on floor2
+bash install.sh                        # on client</code></pre>
+
+<h3>Path C — Jellyfin on existing stack</h3>
+<pre><code>./radtv repair jellyfin</code></pre>
+
+<h3>Path D — Windows</h3>
+<pre><code>pwsh ./install.ps1</code></pre>
+</section>
+
+<section id="s11">
+<h2>11. Day-to-day operations</h2>
+<pre><code>ssh floor2@192.168.1.206 'cd /datapool/preserved/badtv-arr && docker compose ps'</code></pre>
+
+<h3>Repair commands</h3>
+<ul class="path-list">
+  <li><code>./radtv repair prowlarr</code> — indexer stack</li>
+  <li><code>./radtv repair jellyfin</code> — Jellyfin + Kodi sync</li>
+  <li><code>./radtv repair usenet</code> — SABnzbd</li>
+  <li><code>./tools/rd-refresh.py</code> — daily RD token rotation</li>
+</ul>
+</section>
+
+<section id="s12">
+<h2>12. Legacy naming (badtv → radtv)</h2>
+<table>
+  <thead><tr><th>Context</th><th>Old</th><th>New</th></tr></thead>
+  <tbody>
+    <tr><td>GitHub</td><td>jimmershere/badtv</td><td>jimmershere/radtv</td></tr>
+    <tr><td>Host command</td><td>./badtv</td><td>./radtv</td></tr>
+    <tr><td>floor2 compose path</td><td colspan="2"><code>/datapool/preserved/badtv-arr</code> (unchanged on server)</td></tr>
+    <tr><td>floor2 containers</td><td>badtv-jellyfin</td><td>radtv-* in bootstrap template</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="s13">
+<h2>13. Security &amp; credentials</h2>
+<div class="callout warn">
+  <strong>Never commit credentials.</strong> The handover file lives only on floor2:
+  <code>/datapool/preserved/badtv-arr/jellyfin/rdtv-admin.json</code>
+  (mode <code>0600</code>). Retrieve over trusted SSH or a password manager.
+</div>
+<ul>
+  <li>Prefer a non-admin Jellyfin user for daily playback</li>
+  <li>Rotate password + API key if the handover file is exposed</li>
+  <li>qBittorrent traffic routes through Gluetun VPN once <code>.env</code> is filled</li>
+</ul>
+</section>
+
+<section id="s14">
+<h2>14. Troubleshooting</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Jellyfin unreachable</td><td><code>docker compose up -d jellyfin</code>; check logs</td></tr>
+    <tr><td>Empty libraries</td><td>Verify <code>/datapool/media/*</code>; run library scan</td></tr>
+    <tr><td>RD "Bad token"</td><td><code>./tools/rd-refresh.py</code></td></tr>
+    <tr><td>qBit no network</td><td>Check Gluetun health; fill VPN creds</td></tr>
+    <tr><td>Prowlarr 403</td><td>Confirm Byparr on :8191</td></tr>
+    <tr><td>badtv-* vs radtv-*</td><td>Both valid; legacy vs bootstrap naming</td></tr>
+  </tbody>
+</table>
+<p>Full checklist: <a href="RDTV_TEST_CHEATSHEET.md">RDTV_TEST_CHEATSHEET.md</a></p>
+</section>
+
+<section id="s15">
+<h2>15. Further reading</h2>
+<ul class="path-list">
+  <li><a href="ARCHITECTURE.md">ARCHITECTURE.md</a> — this document (Markdown)</li>
+  <li><a href="INSTALL.md">INSTALL.md</a> — install paths</li>
+  <li><a href="SETUP-GUIDE.md">SETUP-GUIDE.md</a> — wizard walkthrough</li>
+  <li><a href="JELLYFIN.md">JELLYFIN.md</a> — Jellyfin ops on floor2</li>
+  <li><a href="MIGRATION.md">MIGRATION.md</a> — badtv → radtv</li>
+  <li><a href="RDTV_TEST_CHEATSHEET.md">RDTV_TEST_CHEATSHEET.md</a> — smoke tests</li>
+  <li><a href="../media-server/README.md">media-server/README.md</a> — NFS/SMB</li>
+  <li><a href="../README.md">README.md</a> — project overview</li>
+</ul>
+</section>
+
+</main>
+</div>
+
+<footer>
+  R&amp;Dtv Architecture &amp; Tutorial — GPL-3.0 documentation.
+  <a href="https://github.com/jimmershere/radtv">github.com/jimmershere/radtv</a>
+</footer>
+
+</body>
+</html>
