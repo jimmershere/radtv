@@ -1888,6 +1888,8 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - PGID=1000
       - TZ=America/New_York
       - WEBUI_PORT=8091
+      - WEBUI_USER=${{QBITTORRENT_USER:-jimmer}}
+      - WEBUI_PASS=${{QBITTORRENT_PASSWORD}}
     volumes:
       - ./qbittorrent:/config
       - /datapool/media/qbit-downloads:/downloads
@@ -1955,8 +1957,10 @@ SERVER_CITIES=
 # OPENVPN_USER=
 # OPENVPN_PASSWORD=
 
-# qBittorrent web-UI admin password (login as 'admin' with this):
-QBITTORRENT_PASSWORD=R&Dtv2026!
+# qBittorrent web-UI credentials (login at http://floor2:8091 via Gluetun).
+# Set by: ./radtv repair qbittorrent
+QBITTORRENT_USER=jimmer
+QBITTORRENT_PASSWORD=
 """
 
     setup_cmd = f"""
@@ -3912,10 +3916,16 @@ def cmd_repair(args: argparse.Namespace) -> int:
             err("git pull origin main  (needs tools/floor2-repair-sonarr.py)")
             return 1
         return subprocess.call([sys.executable, script])
+    if step_id == "qbittorrent":
+        script = os.path.join(REPO_ROOT, "tools", "floor2-set-qbittorrent.py")
+        if not os.path.isfile(script):
+            err(f"repair script missing: {script}")
+            return 1
+        return subprocess.call([sys.executable, script])
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        extra = ["sonarr"]
+        extra = ["sonarr", "qbittorrent"]
         err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
         if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):
@@ -3990,8 +4000,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     sp_launch = sub.add_parser("launch", help="launch Kodi standalone")
     sp_launch.set_defaults(func=cmd_launch)
 
-    sp_repair = sub.add_parser("repair", help="re-run one specific step")
-    sp_repair.add_argument("step", help="step id (see `./radtv status`)")
+    sp_repair = sub.add_parser("repair", help="re-run one specific step (or: sonarr)")
+    sp_repair.add_argument("step", help="step id (see `./radtv status`) or `sonarr`")
     sp_repair.set_defaults(func=cmd_repair)
 
     sp_docs = sub.add_parser("docs", help="open or serve HTML documentation")
