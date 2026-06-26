@@ -37,7 +37,7 @@ STACK_CANDIDATES = (
 PROTON_ENV = {
     "VPN_SERVICE_PROVIDER": "protonvpn",
     "VPN_TYPE": "wireguard",
-    "SERVER_COUNTRIES": os.environ.get("SERVER_COUNTRIES", "USA"),
+    "SERVER_COUNTRIES": os.environ.get("SERVER_COUNTRIES", "United States"),
     "VPN_PORT_FORWARDING": os.environ.get("VPN_PORT_FORWARDING", "on"),
     "VPN_PORT_FORWARDING_PROVIDER": "protonvpn",
     "PORT_FORWARD_ONLY": os.environ.get("PORT_FORWARD_ONLY", "on"),
@@ -45,6 +45,84 @@ PROTON_ENV = {
     "OPENVPN_USER": "",
     "OPENVPN_PASSWORD": "",
 }
+
+# Gluetun + ProtonVPN require full country names (not ISO codes like CH or USA).
+PROTON_COUNTRY_ALIASES: Dict[str, str] = {
+    "usa": "United States",
+    "us": "United States",
+    "uk": "United Kingdom",
+    "gb": "United Kingdom",
+    "uae": "United Arab Emirates",
+    "ch": "Switzerland",
+    "de": "Germany",
+    "fr": "France",
+    "ca": "Canada",
+    "nl": "Netherlands",
+    "se": "Sweden",
+    "no": "Norway",
+    "es": "Spain",
+    "it": "Italy",
+    "jp": "Japan",
+    "au": "Australia",
+    "nz": "New Zealand",
+    "sg": "Singapore",
+    "hk": "Hong Kong",
+    "tw": "Taiwan",
+    "kr": "Korea",
+    "mx": "Mexico",
+    "br": "Brazil",
+    "in": "India",
+    "pl": "Poland",
+    "ro": "Romania",
+    "cz": "Czech Republic",
+    "at": "Austria",
+    "be": "Belgium",
+    "dk": "Denmark",
+    "fi": "Finland",
+    "ie": "Ireland",
+    "pt": "Portugal",
+    "tr": "Turkey",
+    "ua": "Ukraine",
+    "ru": "Russian Federation",
+    "za": "South Africa",
+}
+
+
+def normalize_proton_country(value: str) -> str:
+    """Map USA/CH/etc. to Gluetun's Proton country names."""
+    v = value.strip()
+    if not v:
+        return "United States"
+    alias = PROTON_COUNTRY_ALIASES.get(v.lower())
+    if alias:
+        return alias
+    return v
+
+
+def infer_country_from_wg_conf(path: str) -> str:
+    """Guess Proton server country from WireGuard config path or Endpoint hostname."""
+    base = os.path.basename(path)
+    stem = os.path.splitext(base)[0]
+    # floor2-CH-262, us-free, ch-27, UK#1, etc.
+    for part in re.split(r"[-_#]+", stem):
+        code = part.strip().lower()
+        if code in PROTON_COUNTRY_ALIASES:
+            return PROTON_COUNTRY_ALIASES[code]
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if not line.lower().startswith("endpoint"):
+                    continue
+                host = line.split("=", 1)[1].strip().split(":")[0].lower()
+                m = re.search(r"(?:^|\.)([a-z]{2})[-.]", host)
+                if m and m.group(1) in PROTON_COUNTRY_ALIASES:
+                    return PROTON_COUNTRY_ALIASES[m.group(1)]
+                m = re.search(r"^([a-z]{2})[-.]", host)
+                if m and m.group(1) in PROTON_COUNTRY_ALIASES:
+                    return PROTON_COUNTRY_ALIASES[m.group(1)]
+    except OSError:
+        pass
+    return ""
 
 
 def log(msg: str) -> None:
@@ -173,9 +251,10 @@ def find_tmp_wg_conf() -> str:
     return ""
 
 
-def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str]:
+def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str, str]:
     key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip()
     addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip()
+    country = normalize_proton_country(os.environ.get("SERVER_COUNTRIES", ""))
     conf = os.environ.get("PROTON_WG_CONF", "").strip()
     if not conf and on_floor2():
         conf = find_tmp_wg_conf()
@@ -186,11 +265,22 @@ def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str]:
         ckey, caddr = parse_wg_conf(conf)
         key = key or ckey
         addr = addr or caddr
+        inferred = infer_country_from_wg_conf(conf)
+        if inferred:
+            country = inferred
     if not key:
         key = existing_env.get("WIREGUARD_PRIVATE_KEY", "").strip()
     if not addr:
         addr = existing_env.get("WIREGUARD_ADDRESSES", "").strip()
-    return key, addr
+    if not country or country == "United States":
+        existing_country = normalize_proton_country(
+            existing_env.get("SERVER_COUNTRIES", "")
+        )
+        if existing_country and existing_country != "United States":
+            country = existing_country
+    if not country:
+        country = "United States"
+    return key, addr, country
 
 
 def run_compose_fix(stack: str) -> int:
@@ -212,12 +302,14 @@ def main() -> int:
 
     if on_floor2():
         existing = read_env_file(env_path)
-        wg_key, wg_addr = resolve_wireguard_key(existing)
+        wg_key, wg_addr, country = resolve_wireguard_key(existing)
         updates = dict(PROTON_ENV)
+        updates["SERVER_COUNTRIES"] = country
         if wg_key:
             updates["WIREGUARD_PRIVATE_KEY"] = wg_key
         if wg_addr:
             updates["WIREGUARD_ADDRESSES"] = wg_addr
+        log(f"SERVER_COUNTRIES={country}")
         text = ""
         if os.path.isfile(env_path):
             text = open(env_path, encoding="utf-8").read()
@@ -237,12 +329,18 @@ def main() -> int:
         # Ship key/conf to remote without echoing in process list when possible
         local_env = {}
         conf = os.environ.get("PROTON_WG_CONF", "").strip()
+        country = normalize_proton_country(os.environ.get("SERVER_COUNTRIES", ""))
         if conf and os.path.isfile(conf):
             k, a = parse_wg_conf(conf)
             if k:
                 local_env["WIREGUARD_PRIVATE_KEY"] = k
             if a:
                 local_env["WIREGUARD_ADDRESSES"] = a
+            inferred = infer_country_from_wg_conf(conf)
+            if inferred:
+                country = inferred
+        if country:
+            local_env["SERVER_COUNTRIES"] = country
         if os.environ.get("WIREGUARD_PRIVATE_KEY"):
             local_env["WIREGUARD_PRIVATE_KEY"] = os.environ["WIREGUARD_PRIVATE_KEY"].strip()
         if os.environ.get("WIREGUARD_ADDRESSES"):
@@ -339,6 +437,7 @@ docker compose logs --tail=40 gluetun || true
     log("  VPN_SERVICE_PROVIDER=protonvpn")
     log("  VPN_TYPE=wireguard")
     log("  VPN_PORT_FORWARDING=on (Proton port-forward / P2P servers)")
+    log("  SERVER_COUNTRIES must be a full name (e.g. Switzerland, United States)")
     log("")
     log("If Gluetun restart-loops, add your Proton WireGuard private key:")
     log("  WIREGUARD_PRIVATE_KEY='...' ./radtv repair gluetun")

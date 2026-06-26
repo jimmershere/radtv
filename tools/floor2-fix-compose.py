@@ -49,6 +49,10 @@ def fix_compose_interpolation(text: str) -> str:
 def patch_compose_file(path: str) -> bool:
     body = open(path, encoding="utf-8").read()
     fixed = fix_compose_interpolation(body)
+    fixed = fixed.replace(
+        "${SERVER_COUNTRIES:-USA}",
+        "${SERVER_COUNTRIES:-United States}",
+    )
     if fixed == body:
         return False
     open(path, "w", encoding="utf-8").write(fixed)

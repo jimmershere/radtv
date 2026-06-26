@@ -1867,7 +1867,7 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
       - VPN_TYPE=${{VPN_TYPE:-wireguard}}
       - WIREGUARD_PRIVATE_KEY=${{WIREGUARD_PRIVATE_KEY:-}}
       - WIREGUARD_ADDRESSES=${{WIREGUARD_ADDRESSES:-}}
-      - SERVER_COUNTRIES=${{SERVER_COUNTRIES:-USA}}
+      - SERVER_COUNTRIES=${{SERVER_COUNTRIES:-United States}}
       - SERVER_CITIES=${{SERVER_CITIES:-}}
       - VPN_PORT_FORWARDING=${{VPN_PORT_FORWARDING:-on}}
       - VPN_PORT_FORWARDING_PROVIDER=${{VPN_PORT_FORWARDING_PROVIDER:-protonvpn}}
@@ -1940,7 +1940,7 @@ WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
 
 # US servers by default. Change if you prefer another exit country.
-SERVER_COUNTRIES=USA
+SERVER_COUNTRIES=United States
 SERVER_CITIES=
 
 # Port forwarding for torrents (Proton P2P servers). Requires paid Proton plan.
