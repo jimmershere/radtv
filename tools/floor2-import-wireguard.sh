@@ -67,6 +67,12 @@ GLUETUN_PY="$REPO_ROOT/tools/floor2-set-gluetun-proton.py"
 log "configuring Gluetun (ProtonVPN + WireGuard) in $FLOOR2_STACK"
 python3 "$GLUETUN_PY"
 
+FIX_PY="$REPO_ROOT/tools/floor2-fix-compose.py"
+if [[ -f "$FIX_PY" ]]; then
+  log "fixing docker-compose interpolation"
+  FLOOR2_STACK="$FLOOR2_STACK" python3 "$FIX_PY"
+fi
+
 STACK="$FLOOR2_STACK"
 log "checking containers..."
 if [[ -d "$STACK" ]]; then

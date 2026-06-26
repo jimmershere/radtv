@@ -132,7 +132,13 @@ def upsert_env_text(text: str, updates: Dict[str, str]) -> str:
     return result
 
 
+def fix_compose_interpolation(compose: str) -> str:
+    """${{VAR:-x}} (template artifact) → ${VAR:-x} for docker compose."""
+    return re.sub(r"\$\{\{([^}]+)\}\}", r"${\1}", compose)
+
+
 def patch_compose_proton(compose: str) -> str:
+    compose = fix_compose_interpolation(compose)
     compose = re.sub(
         r"VPN_SERVICE_PROVIDER=\$\{\{VPN_SERVICE_PROVIDER:-mullvad\}\}",
         "VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER:-protonvpn}",
@@ -147,7 +153,7 @@ def patch_compose_proton(compose: str) -> str:
             "      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24",
             1,
         )
-    return compose
+    return fix_compose_interpolation(compose)
 
 
 def find_tmp_wg_conf() -> str:
@@ -185,6 +191,15 @@ def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str]:
     if not addr:
         addr = existing_env.get("WIREGUARD_ADDRESSES", "").strip()
     return key, addr
+
+
+def run_compose_fix(stack: str) -> int:
+    fix_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), "floor2-fix-compose.py")
+    if not os.path.isfile(fix_py):
+        return 0
+    env = {**os.environ, "FLOOR2_STACK": stack}
+    cp = subprocess.run([sys.executable, fix_py], env=env)
+    return cp.returncode
 
 
 def main() -> int:
@@ -304,6 +319,8 @@ if not overlay.get("WIREGUARD_PRIVATE_KEY") and not existing.get("WIREGUARD_PRIV
 else:
     print("env updated for ProtonVPN WireGuard")
 PY
+FIX_PY={repr(os.path.join(os.path.dirname(os.path.abspath(__file__)), "floor2-fix-compose.py"))}
+[[ -f "$FIX_PY" ]] && python3 "$FIX_PY" || true
 cd "$STACK"
 docker compose up -d gluetun qbittorrent
 sleep 4
@@ -314,6 +331,8 @@ docker compose logs --tail=40 gluetun || true
         if code != 0:
             log(f"ERROR: {err[:500]}")
             return code
+
+    run_compose_fix(stack)
 
     log("")
     log("Gluetun should now use:")
