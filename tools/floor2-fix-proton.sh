@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
-# Fix apt on floor2, install official Proton VPN CLI, and wire Gluetun (Docker)
-# from a WireGuard config in /tmp.
+# Repair apt on floor2 and configure ProtonVPN for qBittorrent via Gluetun (Docker).
+#
+# IMPORTANT: `protonvpn signin` does NOT work on headless NAS (no dbus/keyring).
+# qBittorrent VPN uses Gluetun + a WireGuard .conf from your Proton account —
+# you never need the host Proton CLI for torrents.
 #
 # Run ON floor2:
-#   cd /app/radtv && git pull && sudo bash tools/floor2-fix-proton.sh
+#   cd /app/radtv && git pull
+#   bash tools/floor2-import-wireguard.sh /tmp/your-proton.conf   # preferred
+#
+# Full apt repair + optional CLI install:
+#   sudo bash tools/floor2-fix-proton.sh
 #
 # Or from quasimodo:
-#   ssh floor2@192.168.1.206 'bash -s' < tools/floor2-fix-proton.sh
-#
-# After this script:
-#   protonvpn-cli login jimmershere@proton.me   # interactive — needs your Proton password
-#   protonvpn-cli connect --fastest
-#
-# Note: qBittorrent VPN uses Gluetun (Docker), not the host CLI. Both can coexist
-# if you only use CLI for manual tests; Gluetun owns qBit traffic.
+#   ssh floor2 'bash -s' < tools/floor2-fix-proton.sh
 
 set -euo pipefail
 
 PROTON_REPO_DEB="${PROTON_REPO_DEB:-https://repo.protonvpn.com/debian/dists/stable/main/binary-all/protonvpn-stable-release_1.0.8_all.deb}"
 PROTON_ACCOUNT="${PROTON_ACCOUNT:-jimmershere@proton.me}"
 RADTV_ROOT="${RADTV_ROOT:-}"
+# Headless NAS: skip heavy CLI install unless you have a desktop session
+SKIP_PROTON_CLI="${SKIP_PROTON_CLI:-1}"
 
 log() { printf '>> %s\n' "$*"; }
 warn() { printf '!! %s\n' "$*" >&2; }
@@ -49,31 +51,40 @@ apt-get update -y || {
   apt-get update -y
 }
 
-# --- 2. Official Proton VPN apt repository ----------------------------------
-log "installing Proton VPN apt repository"
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
-deb="$tmpdir/protonvpn-stable-release.deb"
-if command -v wget >/dev/null; then
-  wget -qO "$deb" "$PROTON_REPO_DEB"
-elif command -v curl >/dev/null; then
-  curl -fsSL -o "$deb" "$PROTON_REPO_DEB"
+# --- 2. Optional: Proton VPN CLI (desktop / NetworkManager — not headless) ---
+if [[ "$SKIP_PROTON_CLI" == "1" ]]; then
+  log "SKIP_PROTON_CLI=1 — skipping proton-vpn-cli (does not work headless)"
+  log "  use Gluetun + WireGuard instead: bash tools/floor2-import-wireguard.sh"
 else
-  apt-get install -y wget curl
-  wget -qO "$deb" "$PROTON_REPO_DEB"
-fi
-dpkg -i "$deb"
-apt-get update -y
+  log "installing Proton VPN apt repository"
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' EXIT
+  deb="$tmpdir/protonvpn-stable-release.deb"
+  if command -v wget >/dev/null; then
+    wget -qO "$deb" "$PROTON_REPO_DEB"
+  elif command -v curl >/dev/null; then
+    curl -fsSL -o "$deb" "$PROTON_REPO_DEB"
+  else
+    apt-get install -y wget curl
+    wget -qO "$deb" "$PROTON_REPO_DEB"
+  fi
+  dpkg -i "$deb"
+  apt-get update -y
 
-log "installing proton-vpn-cli + dependencies"
-apt-get install -y proton-vpn-cli gnome-keyring network-manager libnss3-tools || {
-  warn "proton-vpn-cli install failed — see apt output above"
-}
+  log "installing proton-vpn-cli + dependencies"
+  apt-get install -y proton-vpn-cli gnome-keyring network-manager libnss3-tools || {
+    warn "proton-vpn-cli install failed — see apt output above"
+  }
 
-if command -v protonvpn-cli >/dev/null; then
-  log "proton-vpn-cli installed: $(protonvpn-cli --version 2>/dev/null || protonvpn-cli version 2>/dev/null || echo ok)"
-else
-  warn "proton-vpn-cli not in PATH after install"
+  if command -v protonvpn >/dev/null; then
+    log "protonvpn installed: $(protonvpn --version 2>/dev/null || echo ok)"
+    warn "signin needs a desktop dbus session — will fail over SSH on floor2"
+    warn "  dbus-run-session -- protonvpn signin $PROTON_ACCOUNT   # may still fail"
+  elif command -v protonvpn-cli >/dev/null; then
+    log "protonvpn-cli installed (legacy wrapper)"
+  else
+    warn "protonvpn not in PATH after install"
+  fi
 fi
 
 # --- 3. Find WireGuard config in /tmp for Gluetun ---------------------------
@@ -93,70 +104,87 @@ WG_CONF=""
 if WG_CONF="$(find_wg_conf)"; then
   log "found WireGuard config: $WG_CONF"
 else
-  warn "no WireGuard config in /tmp — Gluetun step will need WIREGUARD_PRIVATE_KEY manually"
+  warn "no WireGuard config in /tmp — download one from account.proton.me/vpn/WireGuard"
 fi
 
 # --- 4. Wire Gluetun (Docker) for qBittorrent -------------------------------
 if [[ -z "$RADTV_ROOT" ]]; then
   for d in /app/radtv /app/radtv/radtv "$HOME/radtv" /datapool/preserved/radtv-arr/..; do
-    if [[ -f "$d/tools/floor2-set-gluetun-proton.py" ]]; then
+    if [[ -f "$d/tools/floor2-import-wireguard.sh" ]]; then
       RADTV_ROOT="$d"
       break
     fi
   done
 fi
 
-if [[ -n "$RADTV_ROOT" && -f "$RADTV_ROOT/tools/floor2-set-gluetun-proton.py" ]]; then
-  log "configuring Gluetun via $RADTV_ROOT/tools/floor2-set-gluetun-proton.py"
+IMPORT_SH=""
+if [[ -n "$RADTV_ROOT" && -f "$RADTV_ROOT/tools/floor2-import-wireguard.sh" ]]; then
+  IMPORT_SH="$RADTV_ROOT/tools/floor2-import-wireguard.sh"
+elif [[ -f "$(dirname "$0")/floor2-import-wireguard.sh" ]]; then
+  IMPORT_SH="$(dirname "$0")/floor2-import-wireguard.sh"
+  RADTV_ROOT="$(dirname "$0")/.."
+fi
+
+if [[ -n "$IMPORT_SH" && -n "$WG_CONF" ]]; then
+  log "configuring Gluetun via $IMPORT_SH"
   export FLOOR2_STACK="${FLOOR2_STACK:-/datapool/preserved/badtv-arr}"
-  if [[ -n "$WG_CONF" ]]; then
-    export PROTON_WG_CONF="$WG_CONF"
-  fi
-  # Run as floor2 user if we're root
-  if [[ -n "${SUDO_USER:-}" ]]; then
-    sudo -u "$SUDO_USER" -E python3 "$RADTV_ROOT/tools/floor2-set-gluetun-proton.py"
+  run_user="${SUDO_USER:-floor2}"
+  if id "$run_user" &>/dev/null; then
+    sudo -u "$run_user" -E bash "$IMPORT_SH" "$WG_CONF"
   else
-    python3 "$RADTV_ROOT/tools/floor2-set-gluetun-proton.py"
+    bash "$IMPORT_SH" "$WG_CONF"
   fi
+elif [[ -n "$IMPORT_SH" ]]; then
+  warn "skip Gluetun — no WireGuard .conf in /tmp yet"
+  warn "  scp your Proton .conf to floor2:/tmp/ then:"
+  warn "  bash $IMPORT_SH /tmp/your.conf"
 else
   warn "radtv repo not found — skip Gluetun auto-config"
-  warn "  run manually: PROTON_WG_CONF=/tmp/your.conf ./radtv repair gluetun"
 fi
 
 # --- 5. Optional: host WireGuard (headless-friendly fallback) ---------------
 if [[ -n "$WG_CONF" ]]; then
-  log "installing host WireGuard config at /etc/wireguard/proton-radtv.conf (optional fallback)"
+  log "installing host WireGuard config at /etc/wireguard/proton-radtv.conf (optional)"
   apt-get install -y wireguard-tools iproute2 2>/dev/null || true
   install -d -m 0700 /etc/wireguard
   cp "$WG_CONF" /etc/wireguard/proton-radtv.conf
   chmod 600 /etc/wireguard/proton-radtv.conf
-  log "host WG config installed (not auto-started — use: sudo wg-quick up proton-radtv)"
+  log "host WG (optional): sudo wg-quick up proton-radtv"
 fi
 
 # --- 6. Summary -------------------------------------------------------------
 cat <<EOF
 
 ================================================================================
- Proton setup on floor2 — next steps
+ floor2 VPN — headless path (no protonvpn signin)
 ================================================================================
 
-1) Log in to Proton VPN CLI (interactive — needs your Proton password):
-     protonvpn-cli login $PROTON_ACCOUNT
+ qBittorrent uses Docker Gluetun, NOT the host Proton CLI.
 
-2) Connect (optional — for host egress tests):
-     protonvpn-cli connect --fastest
-     protonvpn-cli status
+ 1) Download WireGuard config (browser, any machine):
+      https://account.proton.me/vpn/WireGuard
 
-3) qBittorrent uses Docker Gluetun (port 8091), not the host CLI.
-   Check Gluetun:
-     cd /datapool/preserved/badtv-arr && docker compose ps gluetun qbittorrent
-     docker compose logs --tail=30 gluetun
+ 2) Copy to floor2 and import:
+      scp ~/Downloads/us-free.conf floor2:/tmp/
+      ssh floor2 'cd /app/radtv && bash tools/floor2-import-wireguard.sh /tmp/us-free.conf'
 
-4) qBittorrent Web UI: http://192.168.1.206:8091  (user: jimmer)
+    Or on floor2 directly:
+      cd /app/radtv && bash tools/floor2-import-wireguard.sh /tmp/us-free.conf
 
-Headless note: Proton CLI officially wants NetworkManager + keyring. If login
-fails on this NAS, Gluetun + WireGuard in Docker is the supported path for
-qBittorrent — that part was configured above from $WG_CONF.
+ 3) Check Gluetun + qBit:
+      cd /datapool/preserved/badtv-arr && docker compose ps gluetun qbittorrent
+      docker compose logs --tail=30 gluetun
+
+ 4) qBittorrent Web UI: http://192.168.1.206:8091  (user: jimmer)
+
+ Why signin fails:
+   protonvpn signin needs GNOME keyring + dbus (desktop session).
+   floor2 is headless — Proton documents that CLI does not support headless.
+   sudo protonvpn signin makes it worse (wrong user session).
+   You do not need signin for Gluetun/qBittorrent.
+
+ Optional host CLI (desktop only): SKIP_PROTON_CLI=0 bash tools/floor2-fix-proton.sh
+   then on a machine WITH a display: dbus-run-session -- protonvpn signin $PROTON_ACCOUNT
 
 ================================================================================
 EOF

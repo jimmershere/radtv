@@ -4,6 +4,7 @@
 Run from quasimodo (SSH to floor2):
 
     ./radtv repair gluetun
+    ./radtv repair import-wg    # headless — no protonvpn signin
 
 Provide your Proton WireGuard private key ONE of these ways:
 
