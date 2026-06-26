@@ -3907,11 +3907,19 @@ def cmd_repair(args: argparse.Namespace) -> int:
     step_id = args.step
     if step_id == "sonarr":
         script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
+        if not os.path.isfile(script):
+            err(f"repair script missing: {script}")
+            err("git pull origin main  (needs tools/floor2-repair-sonarr.py)")
+            return 1
         return subprocess.call([sys.executable, script])
     fn = dict(STEPS).get(step_id)
     if not fn:
         err(f"unknown step: {step_id}")
-        err(f"available: {', '.join(s for s, _ in STEPS)}")
+        extra = ["sonarr"]
+        err(f"available: {', '.join(extra + [s for s, _ in STEPS])}")
+        script = os.path.join(REPO_ROOT, "tools", "floor2-repair-sonarr.py")
+        if step_id == "sonarr" or (step_id in ("knaben", "floor2-sonarr") and os.path.isfile(script)):
+            info(f"try: python3 {script}")
         return 1
     state = load_state()
     state.setdefault("steps", {}).pop(step_id, None)
