@@ -8,8 +8,9 @@
 > [`JELLYFIN.md`](JELLYFIN.md), [`SETUP-GUIDE.md`](SETUP-GUIDE.md), and
 > [`RDTV_TEST_CHEATSHEET.md`](RDTV_TEST_CHEATSHEET.md).
 >
-> **View HTML in browser:** run `make docs-serve`, then open
-> `http://127.0.0.1:8765/ARCHITECTURE.html` (or the **Ports** panel in Cursor).
+> **View HTML on your machine** (not the cloud agent VM):
+> - No server: `./radtv docs --open`
+> - With server: `./radtv docs` then open `http://127.0.0.1:8765/ARCHITECTURE.html`
 
 ---
 

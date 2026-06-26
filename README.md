@@ -203,7 +203,7 @@ Full design + maintenance flow: [`docs/SCRAPERS.md`](docs/SCRAPERS.md).
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full system tutorial (Kodi + floor2 + Jellyfin)
 - [`docs/ARCHITECTURE.html`](docs/ARCHITECTURE.html) — same guide, styled HTML for browser reading
-- **View HTML in browser:** run `make docs-serve`, then open `http://127.0.0.1:8765/` (Cursor: use the **Ports** panel)
+- **View HTML locally:** `./radtv docs --open` (no server) or `./radtv docs` then `http://127.0.0.1:8765/`
 - [`DISCLAIMER.md`](DISCLAIMER.md) — read first
 - [`NOTICE.md`](NOTICE.md) — third-party trademarks
 - [`docs/PRIVACY.md`](docs/PRIVACY.md) — VPN / DNS / anonymizer guide

@@ -215,10 +215,12 @@
 </div>
 
 <div class="callout">
-  <strong>Viewing this page:</strong> HTML files are not opened via <code>file://</code>
-  paths in this environment. Run <code>make docs-serve</code> from the repo root,
-  then open <a href="http://127.0.0.1:8765/ARCHITECTURE.html">http://127.0.0.1:8765/ARCHITECTURE.html</a>
-  or use the Cursor <strong>Ports</strong> panel for the forwarded link.
+  <strong>Viewing on your machine:</strong> the docs server runs locally, not in the cloud agent VM.
+  From the repo root on <em>your</em> host (e.g. quasimodo):
+  <ul>
+    <li><code>./radtv docs --open</code> — opens this file directly (no HTTP server)</li>
+    <li><code>./radtv docs</code> — starts <code>http://127.0.0.1:8765/</code> on your machine</li>
+  </ul>
 </div>
 
 <section id="s1">

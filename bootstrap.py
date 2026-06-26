@@ -3869,6 +3869,52 @@ def cmd_repair(args: argparse.Namespace) -> int:
     return 0 if fn(state) else 1
 
 
+def cmd_docs(args: argparse.Namespace) -> int:
+    """Serve or open the HTML documentation locally on *this* machine."""
+    docs_dir = os.path.join(REPO_ROOT, "docs")
+    index = os.path.join(docs_dir, "index.html")
+    tutorial = os.path.join(docs_dir, "ARCHITECTURE.html")
+    if not os.path.isfile(tutorial):
+        err(f"docs not found at {docs_dir}")
+        err("clone/pull the radtv repo first")
+        return 1
+
+    if args.open:
+        target = index if args.page == "index" else tutorial
+        uri = "file://" + os.path.abspath(target)
+        info(f"opening {uri}")
+        try:
+            if sys.platform == "darwin":
+                subprocess.run(["open", target], check=True)
+            elif sys.platform.startswith("linux"):
+                subprocess.run(["xdg-open", target], check=False)
+            elif os.name == "nt":
+                os.startfile(target)  # type: ignore[attr-defined]
+            else:
+                info(f"open this path in your browser:\n  {uri}")
+        except Exception as exc:
+            warn(f"could not launch a browser ({exc})")
+            info(f"open manually:\n  {uri}")
+        return 0
+
+    host = args.host
+    port = args.port
+    url = f"http://{host}:{port}/"
+    cprint(f"\n  R&Dtv docs server on {host}:{port}", color=Color.AMBER, bold=True)
+    info(f"  hub:      {url}")
+    info(f"  tutorial: {url}ARCHITECTURE.html")
+    info("  Press Ctrl+C to stop.\n")
+    os.chdir(docs_dir)
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "http.server", str(port), "--bind", host],
+            check=True,
+        )
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(prog="radtv", description="R&Dtv host-side wizard")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -3889,6 +3935,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     sp_repair = sub.add_parser("repair", help="re-run one specific step")
     sp_repair.add_argument("step", help="step id (see `./radtv status`)")
     sp_repair.set_defaults(func=cmd_repair)
+
+    sp_docs = sub.add_parser("docs", help="open or serve HTML documentation")
+    sp_docs.add_argument("--open", action="store_true",
+                         help="open ARCHITECTURE.html in your default browser (no server)")
+    sp_docs.add_argument("--page", choices=("tutorial", "index"), default="tutorial",
+                         help="which page --open launches (default: tutorial)")
+    sp_docs.add_argument("--host", default="127.0.0.1",
+                         help="bind address for the docs server (default: 127.0.0.1)")
+    sp_docs.add_argument("--port", type=int, default=8765,
+                         help="port for the docs server (default: 8765)")
+    sp_docs.set_defaults(func=cmd_docs)
 
     args = p.parse_args(argv)
     return args.func(args)
