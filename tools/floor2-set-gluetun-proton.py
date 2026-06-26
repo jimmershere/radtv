@@ -35,7 +35,21 @@ STACK_CANDIDATES = (
     "/datapool/preserved/radtv-arr",
 )
 
-PROTON_ENV = {
+# OpenVPN via Proton preset (uses OpenVPN/IKEv2 creds from account.proton.me — not your login email).
+PROTON_OPENVPN_ENV = {
+    "VPN_SERVICE_PROVIDER": "protonvpn",
+    "VPN_TYPE": "openvpn",
+    "SERVER_COUNTRIES": os.environ.get("SERVER_COUNTRIES", "Switzerland"),
+    "VPN_PORT_FORWARDING": os.environ.get("VPN_PORT_FORWARDING", "on"),
+    "VPN_PORT_FORWARDING_PROVIDER": "protonvpn",
+    "PORT_FORWARD_ONLY": os.environ.get("PORT_FORWARD_ONLY", "on"),
+    "OPENVPN_USER": "",
+    "OPENVPN_PASSWORD": "",
+    "WIREGUARD_PRIVATE_KEY": "",
+    "WIREGUARD_ADDRESSES": "",
+}
+
+PROTON_WG_ENV = {
     "VPN_SERVICE_PROVIDER": "protonvpn",
     "VPN_TYPE": "wireguard",
     "SERVER_COUNTRIES": os.environ.get("SERVER_COUNTRIES", "United States"),
@@ -46,7 +60,7 @@ PROTON_ENV = {
     "OPENVPN_PASSWORD": "",
 }
 
-# Use when a Proton-downloaded .conf is installed — key is tied to one endpoint.
+# Proton-downloaded .conf installed as wg0.conf — key tied to one endpoint.
 CUSTOM_WG_ENV = {
     "VPN_SERVICE_PROVIDER": "custom",
     "VPN_TYPE": "wireguard",
@@ -263,13 +277,28 @@ def fix_compose_interpolation(compose: str) -> str:
     return re.sub(r"\$\{\{([^}]+)\}\}", r"${\1}", compose)
 
 
-def patch_compose_proton(compose: str) -> str:
+def patch_compose_proton(compose: str, *, vpn_type: str = "openvpn") -> str:
     compose = fix_compose_interpolation(compose)
     compose = re.sub(
         r"VPN_SERVICE_PROVIDER=\$\{\{VPN_SERVICE_PROVIDER:-mullvad\}\}",
         "VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER:-protonvpn}",
         compose,
     )
+    compose = re.sub(
+        r"VPN_TYPE=\$\{VPN_TYPE:-wireguard\}",
+        f"VPN_TYPE=${{VPN_TYPE:-{vpn_type}}}",
+        compose,
+        count=1,
+    )
+    if "OPENVPN_USER" not in compose:
+        compose = re.sub(
+            r"(^  gluetun:\n(?:  [^\n]*\n)*?      - VPN_TYPE=.*\n)",
+            r"\1      - OPENVPN_USER=${OPENVPN_USER:-}\n"
+            r"      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD:-}\n",
+            compose,
+            count=1,
+            flags=re.M,
+        )
     if "VPN_PORT_FORWARDING" not in compose:
         compose = compose.replace(
             "      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24",
@@ -288,12 +317,6 @@ def patch_compose_proton(compose: str) -> str:
             count=1,
             flags=re.M,
         )
-    compose = re.sub(
-        r"(VPN_SERVICE_PROVIDER=\$\{VPN_SERVICE_PROVIDER:-)protonvpn(\})",
-        r"\1custom\2",
-        compose,
-        count=1,
-    )
     return fix_compose_interpolation(compose)
 
 
@@ -314,47 +337,146 @@ def find_tmp_wg_conf() -> str:
     return ""
 
 
-def resolve_wireguard_settings(existing_env: Dict[str, str]) -> Tuple[Dict[str, str], str]:
-    """Return (.env updates, path to installed wg0.conf or '')."""
+def parse_credentials_env(path: str) -> Tuple[str, str]:
+    """Parse Proton OpenVPN creds file (userid/password or OPENVPN_USER=)."""
+    user, password = "", ""
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, val = (p.strip() for p in line.split("=", 1))
+            elif ":" in line:
+                key, val = (p.strip() for p in line.split(":", 1))
+            else:
+                continue
+            lk = key.lower()
+            if lk in ("userid", "user", "username", "openvpn_user"):
+                user = val
+            elif lk in ("password", "openvpn_password"):
+                password = val
+    return user, password
+
+
+def find_credentials_env(stack: str) -> str:
+    candidates = [
+        os.environ.get("PROTON_CREDENTIALS_ENV", "").strip(),
+        os.environ.get("PROTON_OPENVPN_ENV", "").strip(),
+        "/tmp/wg.env",
+        f"{stack}/gluetun/proton-credentials.env",
+    ]
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return ""
+
+
+def install_credentials_env(stack: str, src_path: str) -> str:
+    dest = f"{stack}/gluetun/proton-credentials.env"
+    os.makedirs(os.path.dirname(dest), mode=0o700, exist_ok=True)
+    with open(src_path, encoding="utf-8") as src, open(dest, "w", encoding="utf-8") as dst:
+        dst.write(src.read())
+    os.chmod(dest, 0o600)
+    return dest
+
+
+def openvpn_user_for_proton(user: str) -> str:
+    """Append +pmp for port-forwarding when enabled (Proton OpenVPN convention)."""
+    user = user.strip()
+    if not user or "+pmp" in user:
+        return user
+    if os.environ.get("VPN_PORT_FORWARDING", "on").lower() in ("1", "on", "true", "yes"):
+        return f"{user}+pmp"
+    return user
+
+
+def country_from_sources(existing_env: Dict[str, str], conf: str) -> str:
+    if conf and os.path.isfile(conf):
+        inferred = infer_country_from_wg_conf(conf)
+        if inferred:
+            return inferred
+    return normalize_proton_country(
+        os.environ.get("SERVER_COUNTRIES", "")
+        or existing_env.get("SERVER_COUNTRIES", "")
+        or "Switzerland"
+    )
+
+
+def resolve_gluetun_settings(
+    stack: str, existing_env: Dict[str, str]
+) -> Tuple[Dict[str, str], str, str]:
+    """Return (.env updates, vpn_type, detail path/message)."""
     conf = os.environ.get("PROTON_WG_CONF", "").strip()
     if not conf and on_floor2():
         conf = find_tmp_wg_conf()
-    if not conf or not os.path.isfile(conf):
-        wg_key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip() or existing_env.get(
-            "WIREGUARD_PRIVATE_KEY", ""
-        ).strip()
-        wg_addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip() or existing_env.get(
-            "WIREGUARD_ADDRESSES", ""
-        ).strip()
-        country = normalize_proton_country(
-            os.environ.get("SERVER_COUNTRIES", "") or existing_env.get("SERVER_COUNTRIES", "")
-        )
-        updates = dict(PROTON_ENV)
-        updates["SERVER_COUNTRIES"] = country or "United States"
-        if wg_key:
-            updates["WIREGUARD_PRIVATE_KEY"] = wg_key
-        if wg_addr:
-            updates["WIREGUARD_ADDRESSES"] = wg_addr
-        return updates, ""
+    creds_path = find_credentials_env(stack)
+    vpn_mode = os.environ.get("GLUETUN_VPN_TYPE", "").strip().lower()
+    country = country_from_sources(existing_env, conf)
 
+    if creds_path and vpn_mode != "wireguard":
+        user, password = parse_credentials_env(creds_path)
+        if not user or not password:
+            log(f"ERROR: {creds_path} needs userid + password (OpenVPN creds from account.proton.me)")
+            sys.exit(1)
+        stored = install_credentials_env(stack, creds_path)
+        updates = dict(PROTON_OPENVPN_ENV)
+        updates["OPENVPN_USER"] = openvpn_user_for_proton(user)
+        updates["OPENVPN_PASSWORD"] = password
+        updates["SERVER_COUNTRIES"] = country
+        updates["FIREWALL_INPUT_PORTS"] = os.environ.get("FIREWALL_INPUT_PORTS", "8091")
+        updates["FIREWALL_OUTBOUND_SUBNETS"] = "192.168.1.0/24,172.16.0.0/12"
+        if os.environ.get("FREE_ONLY", "").strip():
+            updates["FREE_ONLY"] = os.environ["FREE_ONLY"].strip()
+        log(f"mode: protonvpn + openvpn (country={country})")
+        log(f"OpenVPN creds: {stored} (mode 0600)")
+        if conf:
+            log(f"country from WireGuard conf: {conf}")
+        return updates, "openvpn", stored
+
+    if conf and os.path.isfile(conf) and vpn_mode != "openvpn":
+        dest = install_wg_conf_file(stack, conf)
+        log(f"installed WireGuard config: {dest}")
+        log("mode: VPN_SERVICE_PROVIDER=custom (wg0.conf)")
+        updates = dict(CUSTOM_WG_ENV)
+        updates["FIREWALL_INPUT_PORTS"] = os.environ.get("FIREWALL_INPUT_PORTS", "8091")
+        updates["FIREWALL_OUTBOUND_SUBNETS"] = "192.168.1.0/24,172.16.0.0/12"
+        for stale in (
+            "WIREGUARD_PRIVATE_KEY",
+            "WIREGUARD_ADDRESSES",
+            "WIREGUARD_PUBLIC_KEY",
+            "WIREGUARD_ENDPOINT_IP",
+            "WIREGUARD_ENDPOINT_PORT",
+            "OPENVPN_USER",
+            "OPENVPN_PASSWORD",
+        ):
+            updates[stale] = ""
+        return updates, "wireguard", dest
+
+    wg_key = os.environ.get("WIREGUARD_PRIVATE_KEY", "").strip() or existing_env.get(
+        "WIREGUARD_PRIVATE_KEY", ""
+    ).strip()
+    wg_addr = os.environ.get("WIREGUARD_ADDRESSES", "").strip() or existing_env.get(
+        "WIREGUARD_ADDRESSES", ""
+    ).strip()
+    if conf and os.path.isfile(conf):
+        ckey, caddr = parse_wg_conf(conf)
+        wg_key = wg_key or ckey
+        wg_addr = wg_addr or caddr
+    updates = dict(PROTON_WG_ENV)
+    updates["SERVER_COUNTRIES"] = country
+    if wg_key:
+        updates["WIREGUARD_PRIVATE_KEY"] = wg_key
+    if wg_addr:
+        updates["WIREGUARD_ADDRESSES"] = wg_addr
+    log(f"mode: protonvpn + wireguard (country={country})")
+    return updates, "wireguard", ""
+
+
+def resolve_wireguard_settings(existing_env: Dict[str, str]) -> Tuple[Dict[str, str], str]:
     stack = detect_stack()
-    dest = install_wg_conf_file(stack, conf)
-    log(f"installed WireGuard config: {dest}")
-    log("mode: VPN_SERVICE_PROVIDER=custom (uses wg0.conf — matches Proton endpoint)")
-    log("note: port-forwarding is off in custom mode (torrents still work)")
-    updates = dict(CUSTOM_WG_ENV)
-    updates["FIREWALL_INPUT_PORTS"] = os.environ.get("FIREWALL_INPUT_PORTS", "8091")
-    updates["FIREWALL_OUTBOUND_SUBNETS"] = "192.168.1.0/24,172.16.0.0/12"
-    # drop stale proton-only keys from .env
-    for stale in (
-        "WIREGUARD_PRIVATE_KEY",
-        "WIREGUARD_ADDRESSES",
-        "WIREGUARD_PUBLIC_KEY",
-        "WIREGUARD_ENDPOINT_IP",
-        "WIREGUARD_ENDPOINT_PORT",
-    ):
-        updates[stale] = ""
-    return updates, dest
+    updates, vpn_type, detail = resolve_gluetun_settings(stack, existing_env)
+    return updates, detail if vpn_type == "wireguard" and detail else ""
 
 
 def resolve_wireguard_key(existing_env: Dict[str, str]) -> Tuple[str, str, str]:
@@ -394,19 +516,21 @@ def main() -> int:
 
     if on_floor2():
         existing = read_env_file(env_path)
-        updates, wg_installed = resolve_wireguard_settings(existing)
-        if wg_installed:
-            log(f"WireGuard file: {wg_installed}")
-        elif not updates.get("WIREGUARD_PRIVATE_KEY"):
-            log("ERROR: no WireGuard config — set PROTON_WG_CONF=/tmp/your.conf")
+        updates, vpn_type, detail = resolve_gluetun_settings(stack, existing)
+        if detail:
+            log(f"detail: {detail}")
+        if vpn_type == "openvpn":
+            log("using Proton OpenVPN creds + country from wg .conf")
+        elif not updates.get("WIREGUARD_PRIVATE_KEY") and vpn_type != "openvpn":
+            log("ERROR: no config — set PROTON_CREDENTIALS_ENV=/tmp/wg.env and/or PROTON_WG_CONF")
             return 1
-        else:
-            log(f"SERVER_COUNTRIES={updates.get('SERVER_COUNTRIES')}")
         text = open(env_path, encoding="utf-8").read() if os.path.isfile(env_path) else ""
         open(env_path, "w", encoding="utf-8").write(upsert_env_text(text, updates))
         if os.path.isfile(compose_path):
             body = open(compose_path, encoding="utf-8").read()
-            open(compose_path, "w", encoding="utf-8").write(patch_compose_proton(body))
+            open(compose_path, "w", encoding="utf-8").write(
+                patch_compose_proton(body, vpn_type=vpn_type)
+            )
         subprocess.run(
             ["bash", "-c", f"cd {stack} && docker compose up -d gluetun qbittorrent"],
             check=False,
@@ -449,7 +573,7 @@ def main() -> int:
             local_env["WIREGUARD_ADDRESSES"] = os.environ["WIREGUARD_ADDRESSES"].strip()
 
         b64_updates = base64.b64encode(
-            "\n".join(f"{k}={v}" for k, v in {**PROTON_ENV, **local_env}.items()).encode()
+            "\n".join(f"{k}={v}" for k, v in {**PROTON_WG_ENV, **local_env}.items()).encode()
         ).decode()
 
         script = f"""set -euo pipefail
@@ -535,15 +659,10 @@ docker compose logs --tail=40 gluetun || true
     run_compose_fix(stack)
 
     log("")
-    log("Gluetun should now use:")
-    log("  VPN_SERVICE_PROVIDER=protonvpn")
-    log("  VPN_TYPE=wireguard")
-    log("  VPN_PORT_FORWARDING=on (Proton port-forward / P2P servers)")
-    log("  SERVER_COUNTRIES must be a full name (e.g. Switzerland, United States)")
-    log("")
-    log("If Gluetun restart-loops, add your Proton WireGuard private key:")
-    log("  WIREGUARD_PRIVATE_KEY='...' ./radtv repair gluetun")
-    log("  https://account.proton.me/vpn/WireGuard")
+    log("Gluetun configured:")
+    log("  OpenVPN: set PROTON_CREDENTIALS_ENV=/tmp/wg.env (userid + password from account.proton.me/vpn/OpenVPN)")
+    log("  WireGuard: set PROTON_WG_CONF=/tmp/your.conf (country inferred for OpenVPN)")
+    log("  Prefer OpenVPN when wg.env creds exist — more stable than custom wg0.conf on floor2")
     log("")
     log(f"  ssh {FLOOR2_USER}@{FLOOR2_HOST} 'cd {stack} && docker compose logs --tail=50 gluetun'")
     return 0

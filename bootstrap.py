@@ -1864,7 +1864,9 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
     devices: [/dev/net/tun]
     environment:
       - VPN_SERVICE_PROVIDER=${{VPN_SERVICE_PROVIDER:-protonvpn}}
-      - VPN_TYPE=${{VPN_TYPE:-wireguard}}
+      - VPN_TYPE=${{VPN_TYPE:-openvpn}}
+      - OPENVPN_USER=${{OPENVPN_USER:-}}
+      - OPENVPN_PASSWORD=${{OPENVPN_PASSWORD:-}}
       - WIREGUARD_PRIVATE_KEY=${{WIREGUARD_PRIVATE_KEY:-}}
       - WIREGUARD_ADDRESSES=${{WIREGUARD_ADDRESSES:-}}
       - SERVER_COUNTRIES=${{SERVER_COUNTRIES:-United States}}
@@ -1936,7 +1938,9 @@ def step_prowlarr(state: Dict[str, Any]) -> bool:
 # Apply: ./radtv repair gluetun   (from quasimodo)
 
 VPN_SERVICE_PROVIDER=protonvpn
-VPN_TYPE=wireguard
+VPN_TYPE=openvpn
+OPENVPN_USER=
+OPENVPN_PASSWORD=
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
 

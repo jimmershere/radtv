@@ -24,6 +24,7 @@ die() { warn "$*"; exit 1; }
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WG_CONF="${1:-${PROTON_WG_CONF:-}}"
+export FLOOR2_STACK="${FLOOR2_STACK:-/datapool/preserved/badtv-arr}"
 
 find_wg_conf() {
   local f
@@ -36,35 +37,55 @@ find_wg_conf() {
   return 1
 }
 
+find_creds_env() {
+  local f
+  for f in "${PROTON_CREDENTIALS_ENV:-}" /tmp/wg.env "${FLOOR2_STACK}/gluetun/proton-credentials.env"; do
+    [[ -n "$f" && -f "$f" ]] || continue
+    echo "$f"
+    return 0
+  done
+  return 1
+}
+
 if [[ -z "$WG_CONF" ]]; then
   WG_CONF="$(find_wg_conf)" || true
 fi
 
-if [[ -z "$WG_CONF" || ! -f "$WG_CONF" ]]; then
-  cat >&2 <<'EOF'
-!! No WireGuard config found.
-
-1. Open https://account.proton.me/vpn/WireGuard
-2. Create a config (pick a P2P / port-forward friendly server if you can)
-3. Download the .conf file
-4. Copy it to floor2:
-     scp ~/Downloads/us-free.conf floor2:/tmp/
-5. Re-run:
-     bash tools/floor2-import-wireguard.sh /tmp/us-free.conf
-
-You do NOT need `protonvpn signin` on floor2 — that CLI does not work headless.
-EOF
-  exit 1
+CREDS_ENV=""
+if CREDS_ENV="$(find_creds_env)"; then
+  log "Proton OpenVPN creds: $CREDS_ENV"
+  export PROTON_CREDENTIALS_ENV="$CREDS_ENV"
 fi
 
-log "WireGuard config: $WG_CONF"
-export PROTON_WG_CONF="$WG_CONF"
-export FLOOR2_STACK="${FLOOR2_STACK:-/datapool/preserved/badtv-arr}"
+if [[ -z "$WG_CONF" || ! -f "$WG_CONF" ]]; then
+  if [[ -z "$CREDS_ENV" ]]; then
+    cat >&2 <<'EOF'
+!! No WireGuard config or OpenVPN creds found.
+
+WireGuard .conf from https://account.proton.me/vpn/WireGuard
+OpenVPN creds (wg.env) from https://account.proton.me/vpn/OpenVPN
+
+  scp wg.env floor2:/tmp/wg.env
+  scp floor2-CH-262.conf floor2:/tmp/
+  bash tools/floor2-import-wireguard.sh /tmp/floor2-CH-262.conf
+
+You do NOT need `protonvpn signin` on floor2.
+EOF
+    exit 1
+  fi
+  warn "no WireGuard .conf — using OpenVPN creds only"
+  WG_CONF=""
+fi
+
+if [[ -n "$WG_CONF" ]]; then
+  log "WireGuard config: $WG_CONF"
+  export PROTON_WG_CONF="$WG_CONF"
+fi
 
 GLUETUN_PY="$REPO_ROOT/tools/floor2-set-gluetun-proton.py"
 [[ -f "$GLUETUN_PY" ]] || die "missing $GLUETUN_PY — git pull in $REPO_ROOT"
 
-log "configuring Gluetun (custom WireGuard from Proton .conf) in $FLOOR2_STACK"
+log "configuring Gluetun (Proton OpenVPN + wg country) in $FLOOR2_STACK"
 python3 "$GLUETUN_PY"
 
 WIRE_PY="$REPO_ROOT/tools/floor2-wire-qbit-clients.py"
