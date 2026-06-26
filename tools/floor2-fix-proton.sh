@@ -134,6 +134,7 @@ if [[ -n "$IMPORT_SH" && -n "$WG_CONF" ]]; then
   else
     bash "$IMPORT_SH" "$WG_CONF"
   fi
+  GLUETUN_CONFIGURED=1
 elif [[ -n "$IMPORT_SH" ]]; then
   warn "skip Gluetun — no WireGuard .conf in /tmp yet"
   warn "  scp your Proton .conf to floor2:/tmp/ then:"
@@ -153,6 +154,30 @@ if [[ -n "$WG_CONF" ]]; then
 fi
 
 # --- 6. Summary -------------------------------------------------------------
+if [[ "${GLUETUN_CONFIGURED:-0}" == "1" ]]; then
+  cat <<EOF
+
+================================================================================
+ Done — Gluetun configured from $WG_CONF
+================================================================================
+
+ qBittorrent VPN is ready. You do NOT need protonvpn or protonvpn-cli on floor2.
+
+ Check:
+   cd /datapool/preserved/badtv-arr && docker compose ps gluetun qbittorrent
+   docker compose logs --tail=30 gluetun
+
+ qBittorrent Web UI: http://192.168.1.206:8091  (user: jimmer)
+
+ Ignore any old docs that say "protonvpn-cli login" — that command does not
+ exist on current Proton packages (use \`protonvpn\` on desktops only) and
+ signin fails on headless NAS anyway. Gluetun + WireGuard is the path.
+
+================================================================================
+EOF
+  exit 0
+fi
+
 cat <<EOF
 
 ================================================================================
