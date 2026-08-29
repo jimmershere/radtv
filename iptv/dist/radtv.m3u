@@ -279,6 +279,8 @@ https://i.mjh.nz/.r/mythbusters-fast.m3u8
 https://i.mjh.nz/.r/travelaustralia-fast.m3u8
 #EXTINF:-1 tvg-id="mjh-aircrashinvestigations-fast" tvg-logo="https://i.mjh.nz/.images/auto-aircrashinvestigations-fast-7ff35e.png" group-title="MJH / Au",Air Crash Investigations
 https://i.mjh.nz/.r/aircrashinvestigations-fast.m3u8
+#EXTINF:-1 tvg-id="mjh-misc502-fast" tvg-logo="https://i.mjh.nz/.images/auto-misc502-fast-a03ae8.png" group-title="MJH / Au",MISC502 - FIH Hockey World Cup
+https://i.mjh.nz/.r/misc502-fast.m3u8
 #EXTINF:-1 tvg-id="mjh-betterhomesandgardens-fast" tvg-logo="https://i.mjh.nz/.images/auto-betterhomesandgardens-fast-8d1753.png" group-title="MJH / Au",Better Homes And Gardens
 https://i.mjh.nz/.r/betterhomesandgardens-fast.m3u8
 #EXTINF:-1 tvg-id="mjh-cas33-fast" tvg-logo="https://i.mjh.nz/.images/auto-cas33-fast-7aec74.png" group-title="MJH / Au",The Yorkshire Vet
